@@ -67,3 +67,17 @@ This file is the interview script.
 - **Why:** Tests should sit where leakage actually happens. Record:
   `.claude/council-cache/local-council-1791409997.md` (local, all-Claude reviewers — weak
   corroboration, used for angle coverage).
+
+## D009 — OSAP release 202510 ingested and sealed (2026-10-07)
+- **Did:** Downloaded OSAP firm characteristics (release 202510, 209 signals, 5,416,424 rows),
+  converted to Parquet, split at ingest, then deleted the full zip and full Parquet so no
+  unsealed copy remains on disk.
+  - source zip sha256 `aae101c1fd4749c5a68d83734b6ce5e90a0f2f18b456f498e6f3b803081f6ee3`
+  - pre-2017 file: 4,482,749 rows, 1925-12 → 2016-12, 31,770 permnos
+  - **holdout file sha256 `8dd2dd29b6d54856f8e9612c8dbd9ad3f2015ca86f0060f8d825374e10e286cd`** —
+    not opened until Phase 5; this hash proves it is unchanged when it is.
+- **Timing convention:** an OSAP signal dated t uses information through end of t and predicts
+  the return in t+1. Verified from openassetpricing 0.0.2's own code (STreversal at t = −ret in t),
+  pinned in `tests/test_align.py`.
+- **Rejected:** Keeping the zip "just in case" (an unsealed copy defeats the seal; it is
+  re-downloadable and verifiable by the hash above).
