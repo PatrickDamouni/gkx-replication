@@ -9,10 +9,18 @@ dependencies = [
     "numpy>=2.0",
     "wrds>=3.2",
     "python-dotenv>=1.0",
+    "openassetpricing>=0.0.2",
+    "requests>=2.34.2",
+    "statsmodels>=0.15.0",
+    "scikit-learn>=1.9.1",
 ]
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.6"]
+dev = [
+    "hypothesis>=6.168.5",
+    "pytest>=8",
+    "ruff>=0.6",
+]
 
 [build-system]
 requires = ["hatchling"]
