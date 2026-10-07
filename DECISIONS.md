@@ -23,3 +23,10 @@ This file is the interview script.
 - **Rejected:** Picking an extension after seeing replication results.
 - **Why:** Choosing the extension before seeing data avoids a forking-paths problem, and
   "does it survive after publication" is a question a quant researcher actually cares about.
+
+## D004 — Pre-registration locked before data access
+- **Chose:** Lock `PREREGISTRATION.md` and tag the commit `prereg-v1` before any WRDS data is pulled.
+- **Rejected:** Refining criteria after a first look at the data.
+- **Why:** The tag gives a verifiable timestamp that the question, success criteria,
+  abandon conditions and splits were fixed ex ante. Any change after this point is a
+  logged deviation, not a silent edit.

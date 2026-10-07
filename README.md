@@ -10,7 +10,7 @@ Replication and post-publication test of Gu, Kelly & Xiu (2020),
 
 | Phase | Status |
 |---|---|
-| 0. Setup + pre-registration | in progress |
+| 0. Setup + pre-registration | done (`prereg-v1`) |
 | 1. Data pipeline + leakage checks | — |
 | 2. Baselines | — |
 | 3. Replication (linear, trees, NNs; walk-forward, multi-seed) | — |

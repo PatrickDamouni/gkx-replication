@@ -1,8 +1,8 @@
-# Pre-registration (DRAFT — sign off before any data is loaded)
+# Pre-registration (LOCKED 2026-10-07 — tag `prereg-v1`)
 
-Written before touching data. Anything changed after data is loaded gets logged in
-`DECISIONS.md` with the reason, so it's clear what was decided ex ante vs ex post.
-
+Locked before any data was loaded. The git tag `prereg-v1` is the timestamped proof.
+Any later deviation is logged in `DECISIONS.md` with the reason, so ex-ante vs ex-post
+choices stay distinguishable.
 ## Question
 
 Do the machine-learning gains in Gu, Kelly & Xiu (2020, RFS) — "Empirical Asset
