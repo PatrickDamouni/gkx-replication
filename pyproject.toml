@@ -9,7 +9,7 @@ dependencies = [
     "numpy>=2.0",
     "wrds>=3.2",
     "python-dotenv>=1.0",
-    "openassetpricing>=0.0.2",
+    "openassetpricing==0.0.2",
     "requests>=2.34.2",
     "statsmodels>=0.15.0",
     "scikit-learn>=1.9.1",

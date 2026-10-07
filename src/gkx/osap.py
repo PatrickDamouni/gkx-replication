@@ -19,10 +19,14 @@ import pyarrow.parquet as pq
 import requests
 from openassetpricing import OpenAP
 
+from gkx.panel import split_holdout
+
 RELEASE = 202510
 RAW_DIR = Path("data/raw")
 ZIP_PATH = RAW_DIR / f"osap_firm_char_{RELEASE}.zip"
-PARQUET_PATH = RAW_DIR / f"osap_firm_char_{RELEASE}.parquet"
+PARQUET_PATH = RAW_DIR / f"osap_firm_char_{RELEASE}.parquet"  # transient: deleted after split
+PRE_PATH = RAW_DIR / f"osap_firm_char_{RELEASE}_pre2017.parquet"
+HOLDOUT_PATH = RAW_DIR / f"osap_firm_char_{RELEASE}_holdout.parquet"  # sealed until Phase 5
 DOC_PATH = RAW_DIR / f"osap_signal_doc_{RELEASE}.csv"
 CHUNK_ROWS = 500_000
 
@@ -78,9 +82,19 @@ def main() -> int:
         sha = download_zip(ap._get_url("firm_char"), ZIP_PATH)
         print(f"sha256 {sha}")
 
-    rows = zip_to_parquet(ZIP_PATH, PARQUET_PATH)
-    print(f"{rows:,} rows -> {PARQUET_PATH} ({PARQUET_PATH.stat().st_size / 1e9:.2f} GB)")
+    if not PARQUET_PATH.exists() and not PRE_PATH.exists():
+        rows = zip_to_parquet(ZIP_PATH, PARQUET_PATH)
+        print(f"{rows:,} rows -> {PARQUET_PATH}")
+    if PARQUET_PATH.exists():
+        seal()
     return 0
+
+
+def seal() -> None:
+    """Split the full panel at ingest and delete it, so no unsealed copy remains (D008)."""
+    digest = split_holdout(PARQUET_PATH, PRE_PATH, HOLDOUT_PATH)
+    PARQUET_PATH.unlink()
+    print(f"pre-2017 -> {PRE_PATH}\nholdout  -> {HOLDOUT_PATH}\nholdout sha256 {digest}")
 
 
 if __name__ == "__main__":
