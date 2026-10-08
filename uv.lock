@@ -154,6 +154,7 @@ dev = [
     { name = "hypothesis" },
     { name = "pytest" },
     { name = "ruff" },
+    { name = "tabulate" },
 ]
 
 [package.metadata]
@@ -174,6 +175,7 @@ dev = [
     { name = "hypothesis", specifier = ">=6.168.5" },
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = ">=0.6" },
+    { name = "tabulate", specifier = ">=0.10.0" },
 ]
 
 [[package]]
