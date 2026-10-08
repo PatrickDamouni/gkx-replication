@@ -1,0 +1,143 @@
+"""GKX linear models via Kronecker sufficient statistics (D029, D030).
+
+Design per row: z = [x ⊗ c, industry dummies, (intercept)], x = (1, scaled macro), c = chars.
+Within any group of rows sharing the same macro vector x,
+    Σ z z' over the group = (x x') ⊗ (C'WC)  (and analogous cross terms),
+so X'WX and X'Wy are accumulated per group without ever materializing the 920 columns.
+Grouping is by the macro values themselves, which is exact and needs no date column (D014).
+
+Macro predictors are centred/scaled with training-window constants: with the constant in x,
+span((1, x) ⊗ c) is unchanged, so OLS/Huber predictions are identical and only conditioning
+improves (D030). Huber is fit by IRLS with ξ = 99.9th percentile of |OLS residual| (D030).
+"""
+
+import numpy as np
+import pandas as pd
+import scipy.linalg
+
+HUBER_QUANTILE = 0.999
+
+
+def huber_threshold(ols: "LinearGKX", X: pd.DataFrame, y: pd.Series) -> float:
+    return float(np.quantile(np.abs(y.to_numpy() - ols.predict(X)), HUBER_QUANTILE))
+
+
+class LinearGKX:
+    def __init__(
+        self,
+        char_cols: list[str],
+        macro_cols: list[str],
+        ind_col: str | None = None,
+        intercept: bool = False,
+        loss: str = "l2",
+        xi: float | None = None,
+        max_iter: int = 500,
+        tol: float = 1e-12,
+    ):
+        self.char_cols, self.macro_cols, self.ind_col = char_cols, macro_cols, ind_col
+        self.intercept, self.loss, self.xi, self.max_iter, self.tol = (
+            intercept,
+            loss,
+            xi,
+            max_iter,
+            tol,
+        )
+
+    # --- layout ---------------------------------------------------------------------------
+    def _groups(self, X: pd.DataFrame):
+        """Yield (x̃ vector, row positions) for each group of rows sharing a macro vector."""
+        if not self.macro_cols:
+            yield np.ones(1), np.arange(len(X))
+            return
+        m = (X[self.macro_cols].to_numpy(dtype=float) - self.mu_) / self.sd_
+        codes = pd.factorize(pd.MultiIndex.from_arrays(m.T))[0]
+        order = np.argsort(codes, kind="stable")
+        bounds = np.flatnonzero(np.diff(codes[order])) + 1
+        for rows in np.split(order, bounds):
+            yield np.concatenate([[1.0], m[rows[0]]]), rows
+
+    def _ind_codes(self, X: pd.DataFrame) -> np.ndarray:
+        if self.ind_col is None:
+            return np.full(len(X), -1)
+        return pd.Categorical(X[self.ind_col], categories=self.industries_).codes  # unseen → -1
+
+    # --- normal equations -----------------------------------------------------------------
+    def _normal_equations(self, X, y, w):
+        C = X[self.char_cols].to_numpy(dtype=float)
+        ind = self._ind_codes(X)
+        pc, pk, pd_ = len(self.char_cols), 1 + len(self.macro_cols), len(self.industries_)
+        nz = pk * pc
+        size = nz + pd_ + int(self.intercept)
+        A, b = np.zeros((size, size)), np.zeros(size)
+        for x, rows in self._groups(X):
+            Cg, wg, yg, ig = C[rows], w[rows], y[rows], ind[rows]
+            WC = Cg * wg[:, None]
+            A[:nz, :nz] += np.kron(np.outer(x, x), Cg.T @ WC)
+            b[:nz] += np.kron(x, WC.T @ yg)
+            if pd_:
+                has = ig >= 0
+                DWC = np.zeros((pd_, pc))
+                np.add.at(DWC, ig[has], WC[has])
+                A[:nz, nz : nz + pd_] += np.kron(x[:, None], DWC.T)
+                np.add.at(A[nz : nz + pd_, nz : nz + pd_], (ig[has], ig[has]), wg[has])
+                np.add.at(b[nz : nz + pd_], ig[has], (wg * yg)[has])
+            if self.intercept:
+                j = size - 1
+                A[:nz, j] += np.kron(x, WC.sum(0))
+                if pd_:
+                    np.add.at(A[nz : nz + pd_, j], ig[has], wg[has])
+                A[j, j] += wg.sum()
+                b[j] += (wg * yg).sum()
+        A = np.triu(A) + np.triu(A, 1).T  # fill the lower triangle from the accumulated upper
+        return A, b
+
+    def _solve(self, A, b):
+        try:
+            return scipy.linalg.solve(A, b, assume_a="pos")
+        except (scipy.linalg.LinAlgError, ValueError):
+            return scipy.linalg.lstsq(A, b)[0]
+
+    # --- public API -----------------------------------------------------------------------
+    def fit(self, X: pd.DataFrame, y: pd.Series, X_val=None, y_val=None) -> "LinearGKX":
+        m = X[self.macro_cols].to_numpy(dtype=float) if self.macro_cols else np.zeros((len(X), 0))
+        self.mu_, self.sd_ = m.mean(0), np.where(m.std(0) > 0, m.std(0), 1.0)
+        self.industries_ = (
+            sorted(X[self.ind_col].dropna().unique()) if self.ind_col is not None else []
+        )
+        yy = y.to_numpy(dtype=float)
+        w = np.ones(len(yy))
+        A, b = self._normal_equations(X, yy, w)
+        self.coef_ = self._solve(A, b)
+        self.cond_ = float(np.linalg.cond(A))
+        if self.loss == "l2":
+            return self
+        if self.xi is None:
+            self.xi = huber_threshold(self, X, y)
+        self.n_iter_ = 0
+        for it in range(1, self.max_iter + 1):
+            self.n_iter_ = it
+            a = np.abs(yy - self.predict(X))
+            w = np.where(a <= self.xi, 1.0, self.xi / np.maximum(a, 1e-300))
+            A, b = self._normal_equations(X, yy, w)
+            new = self._solve(A, b)
+            done = np.max(np.abs(new - self.coef_)) <= self.tol * (1 + np.max(np.abs(new)))
+            self.coef_ = new
+            if done:
+                break
+        return self
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        C = X[self.char_cols].to_numpy(dtype=float)
+        pc, pk = len(self.char_cols), 1 + len(self.macro_cols)
+        nz = pk * pc
+        theta = self.coef_[:nz].reshape(pk, pc)
+        out = np.empty(len(X))
+        for x, rows in self._groups(X):
+            out[rows] = C[rows] @ (x @ theta)
+        if self.industries_:
+            ind = self._ind_codes(X)
+            gamma = np.append(self.coef_[nz : nz + len(self.industries_)], 0.0)  # -1 → 0
+            out += gamma[ind]
+        if self.intercept:
+            out += self.coef_[-1]
+        return out
