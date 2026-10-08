@@ -190,3 +190,15 @@ This file is the interview script.
 - **Validation of the CRSP build (common-only version, before this change):** value-weighted
   excess return vs `ff.factors_monthly.mktrf`, 1957-03..2016-12, 718 months: corr 1.0000, mean
   difference −0.002%/month, tracking sd 0.018%/month.
+
+## D021 — Macro predictors: Welch-Goyal updated file, sealed at ingest (2026-10-08)
+- **Source:** Amit Goyal's "Updated Welch-Goyal data (through 2025)" (sites.google.com/view/agoyal145),
+  Monthly sheet, 1871-01 → 2025-12. Source xlsx sha256
+  `8d210b779442a5a9206702060aac67c1de4283186c0f167ebdb4488d149be872`. Goyal notes that from 2022 lty
+  comes from FRED and ltr/corpr from Bloomberg indices — affects only the sealed holdout years.
+- **Definitions (GKX §2, Welch & Goyal 2008):** dp = log D12 − log Index; ep = log E12 − log Index;
+  bm; ntis; tbl; tms = lty − tbl; dfy = BAA − AAA; svar.
+- **Timing:** value at month t joins on the signal month t (known by end of t).
+- **Sealed:** split at ingest; **holdout sha256 `4d2640cc569645deaa94cab27bd51ac32e3469eb72371660a3fd07110360448e`**
+  in read-only `data/sealed/`; xlsx and full Parquet deleted. Pre-2017 file: 718 signal months
+  1957-02 → 2016-11 with no missing values.
