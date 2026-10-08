@@ -309,3 +309,28 @@ This file is the interview script.
   ~40–80 h. The linear family uses exact Kronecker sufficient statistics
   (X'X = Σ_t (x_t x_t') ⊗ (C_t'C_t)), so it never materializes 920 columns.
 - Grids, early-stopping rules and library versions are fixed in the Phase 3 plan before the test look.
+
+## D030 — Reference values and procedure facts from the paper, fixed before any model run (2026-10-08)
+- **Source:** Gu, Kelly & Xiu, NBER Working Paper 25398 (Dec 2018, revised Sep 2019), read from the
+  PDF text (not memory). Table 1 (monthly R²_oos, %) is committed verbatim as
+  `paper/gkx_table1.csv` and tagged `reference-v1` before any model is fit to returns.
+- **Facts used:**
+  - Table 1's OLS, OLS-3, ENet, GLM and GBRT columns are Huber versions ("+H"). Our squared-loss
+    OLS/OLS-3 (D011) are reported without a paper comparison.
+  - Huber ξ: Table A.5, "ξ = 99.9% quantile" for OLS-3+H, ENet+H, GLM+H, GBRT+H.
+  - Splits: train 1957–1974 expanding by one year per refit; validation 12 years rolling; test
+    1987–2016; refit annually; no cross-validation (matches seam 3).
+  - Top/bottom 1,000: by market equity, each month.
+  - Characteristics ranked to [−1, 1] each month; missing → cross-sectional median (footnote 29;
+    matches build_panel).
+- **Interpretations where the paper is silent (fixed now, not tuned):**
+  - ξ basis: the 99.9th percentile of |residual| from the squared-loss fit on the same training
+    window (OLS-all ξ likewise, since Table 1 reports OLS+H).
+  - Models without tuning parameters (OLS, OLS-3) are fit on the training window only; the paper
+    describes no merge of validation into training.
+  - Top/bottom 1,000 ranked on ME at the signal month (`me_lag`).
+  - Macro predictors are not transformed in the paper. For the linear family we center/scale them
+    with training-window constants before forming x ⊗ c: with the constant included, the span of
+    (1, x)⊗c is unchanged, so OLS and Huber predictions are mathematically identical and only the
+    numerics improve (council 4: cond(X'X) 5.3e10 raw → 1.1e6 scaled). For penalized models and NNs
+    scaling changes the fitted model; that choice is made in the Phase 3 plan.
