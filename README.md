@@ -11,7 +11,7 @@ Replication and post-publication test of Gu, Kelly & Xiu (2020),
 | Phase | Status |
 |---|---|
 | 0. Setup + pre-registration | done (`prereg-v1`) |
-| 1. Data pipeline + leakage checks | in progress (1a: harness on OSAP + synthetic) |
+| 1. Data pipeline + leakage checks | 1a done (harness, 42 tests, power + memory measured); 1b waits on WRDS |
 | 2. Baselines | — |
 | 3. Replication (linear, trees, NNs; walk-forward, multi-seed) | — |
 | 4. Ablations + error analysis (pre-2017 only) | — |

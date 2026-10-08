@@ -152,3 +152,13 @@ This file is the interview script.
 - **Rejected:** ΔR² CI as the criterion (high chance of a false "no difference"); requiring both.
 - **Caveat:** fitted models carry estimation error, so real power is lower than shown. Rerun this
   script with real CRSP residual volatility once data arrives.
+
+## D018 — Memory budget measured on the real data path (2026-10-08)
+- `scripts/measure_memory.py`, fresh process, 94 signal columns (D013 width): load 3.51 GB →
+  rank_normalize 5.42 GB peak (46 s, run once) → largest train window (3,342,721 rows) as float32
+  adds nothing measurable. Fits comfortably in 26 GB.
+- Remaining pressure is the char × macro expansion for linear/NN models: 94 × 9 = 846 columns ×
+  3.34M rows ≈ 11 GB float32 if materialized — handled by batching inside those models (D007);
+  trees use raw inputs (D012).
+- Replaces the planned in-pytest "scale test" (council 2: in-process `ru_maxrss` is a lifetime
+  high-water mark and a synthetic refit of nonexistent models measures the wrong thing).
