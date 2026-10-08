@@ -13,9 +13,11 @@ improves (D030). Huber is fit by IRLS with ξ = 99.9th percentile of |OLS residu
 
 import numpy as np
 import pandas as pd
-import scipy.linalg
 
 HUBER_QUANTILE = 0.999
+EIG_RTOL = (
+    1e-12  # eigenvalues of X'WX below this fraction of the largest are treated as zero (D031)
+)
 
 
 def huber_threshold(ols: "LinearGKX", X: pd.DataFrame, y: pd.Series) -> float:
@@ -92,10 +94,15 @@ class LinearGKX:
         return A, b
 
     def _solve(self, A, b):
-        try:
-            return scipy.linalg.solve(A, b, assume_a="pos")
-        except (scipy.linalg.LinAlgError, ValueError):
-            return scipy.linalg.lstsq(A, b)[0]
+        """Minimum-norm solution of the (possibly singular) normal equations (D031).
+
+        Directions with no variation in the training window (e.g. a characteristic not yet
+        available, median-filled to 0) get exactly zero weight instead of arbitrary values.
+        """
+        vals, vecs = np.linalg.eigh(A)
+        keep = vals > EIG_RTOL * vals.max()
+        self.rank_ = int(keep.sum())
+        return vecs[:, keep] @ ((vecs[:, keep].T @ b) / vals[keep])
 
     # --- public API -----------------------------------------------------------------------
     def fit(self, X: pd.DataFrame, y: pd.Series, X_val=None, y_val=None) -> "LinearGKX":

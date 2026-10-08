@@ -101,3 +101,23 @@ def test_industry_unseen_in_training_contributes_nothing_and_does_not_crash():
     Xt = X.head(5).assign(sic2=99.0)
     Xn = X.head(5).assign(sic2=np.nan)
     np.testing.assert_allclose(m.predict(Xt), m.predict(Xn), atol=1e-12)
+
+
+def test_unidentified_directions_get_zero_weight_minimum_norm():
+    """A characteristic that is 0 for every training row (not yet available, median-filled) has
+    no identified coefficient; its test values must not move predictions (D031)."""
+    X, y = _panel()
+    X["c3"] = 0.0  # unavailable throughout training
+    m = _model().fit(X, y, X, y)
+    Xt, _ = _panel(seed=1)  # c3 nonzero at test time
+    np.testing.assert_allclose(m.predict(Xt), m.predict(Xt.assign(c3=0.0)), atol=1e-10)
+    assert m.rank_ < len(m.coef_)
+
+
+def test_minimum_norm_solution_matches_pinv_on_the_materialized_design():
+    X, y = _panel()
+    X["c3"] = 0.0
+    Xt, _ = _panel(seed=1)
+    theta = np.linalg.pinv(_design(X, intercept=False, industries=[10, 20, 30])) @ y.to_numpy()
+    expected = _design(Xt, intercept=False, industries=[10, 20, 30]) @ theta
+    np.testing.assert_allclose(_model().fit(X, y, X, y).predict(Xt), expected, atol=1e-9)

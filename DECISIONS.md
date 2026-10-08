@@ -334,3 +334,20 @@ This file is the interview script.
     (1, x)⊗c is unchanged, so OLS and Huber predictions are mathematically identical and only the
     numerics improve (council 4: cond(X'X) 5.3e10 raw → 1.1e6 scaled). For penalized models and NNs
     scaling changes the fitted model; that choice is made in the Phase 3 plan.
+
+## D031 — Linear solves use the minimum-norm solution (found in the 1975–1986 rehearsal) (2026-10-08)
+- **Finding (rehearsal, D027 — not the test window):** OLS-all scored R²_oos −28,579% over
+  1975–1986. Diagnosis on fold 1975: training is 1957-03 → 1962-12 (70 months); X'X has rank
+  534/907 (cond 5.2e51) because many GKX characteristics do not exist yet and are median-filled to
+  0; in-sample R² is a sane 3.0%; 1975 macro values sit 3–10 training SDs outside the training
+  range (m_dfy 10.0σ, m_bm 9.3σ). Cholesky and lstsq gave −71,086% and −57,445% on that fold:
+  the explosion is genuine extrapolation, made arbitrary by the rank deficiency.
+- **Chose:** solve the normal equations by eigendecomposition and keep eigenvalues above
+  1e-12 × the largest (minimum-norm / pseudo-inverse solution). Unidentified directions get
+  exactly zero weight (tests: `test_unidentified_directions_get_zero_weight_minimum_norm`,
+  `test_minimum_norm_solution_matches_pinv_on_the_materialized_design`). `rank_` is recorded.
+- **Rejected:** Cholesky (arbitrary coefficients on singular designs); ridge (changes the model —
+  GKX's OLS is unpenalized); trimming characteristics by availability (changes GKX's feature set).
+- **Expectation stated before the test look:** rehearsal training windows (6–17 years) are far
+  shorter than the test-window ones (≥30 years), so rehearsal OLS-all is not comparable to GKX's
+  −3.46%; a large negative OLS-all R² remains expected for genuine reasons (GKX §3.2).
