@@ -71,3 +71,19 @@ def test_panel_up_to_a_return_month_ignores_everything_later():
         return build_panel(chars, c, macro, char_cols=["BM"])
 
     assert_future_invariant(from_crsp, crsp, cutoff=200006)
+
+
+def test_passthrough_columns_are_carried_unranked_from_the_signal_month():
+    chars = pd.DataFrame(
+        {"permno": [1, 2], "yyyymm": [200001] * 2, "BM": [0.1, 0.2], "sic2": [35, 60]}
+    )
+    crsp = _crsp(
+        [
+            (1, 200001, 0.0, 1.0, 1.0, 10, 1),
+            (2, 200001, 0.0, 1.0, 1.0, 10, 1),
+            (1, 200002, 0.01, 1.0, 1.0, 10, 1),
+            (2, 200002, 0.02, 1.0, 1.0, 10, 1),
+        ]
+    )
+    out = build_panel(chars, crsp, MACRO, char_cols=["BM"], keep=["sic2"]).set_index("permno")
+    assert out.loc[1, "sic2"] == 35 and out.loc[2, "sic2"] == 60

@@ -16,10 +16,15 @@ from gkx.preprocess import rank_normalize
 
 
 def build_panel(
-    chars: pd.DataFrame, crsp: pd.DataFrame, macro: pd.DataFrame, char_cols: list[str]
+    chars: pd.DataFrame,
+    crsp: pd.DataFrame,
+    macro: pd.DataFrame,
+    char_cols: list[str],
+    keep: list[str] | None = None,
 ) -> pd.DataFrame:
+    """`keep`: signal-month columns carried through unranked (e.g. sic2 for industry dummies)."""
     at_t = crsp[["permno", "yyyymm", "me", "shrcd"]].rename(columns={"me": "me_lag"})
-    signals = chars[["permno", "yyyymm", *char_cols]].merge(
+    signals = chars[["permno", "yyyymm", *char_cols, *(keep or [])]].merge(
         at_t, on=["permno", "yyyymm"], how="inner", validate="one_to_one"
     )
     signals = rank_normalize(signals, char_cols)
