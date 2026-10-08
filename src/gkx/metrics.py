@@ -85,12 +85,18 @@ def decile_long_short(df: pd.DataFrame, pred: str) -> pd.DataFrame:
 
     `me_lag` must be market equity at the signal (formation) month; using the
     return month's ME would leak that month's return into the weights.
-    Months with fewer than 10 stocks are skipped.
+    Months with fewer than 10 stocks or fewer than 10 distinct forecasts are skipped:
+    a sort among ties would otherwise follow row order (council 4). Remaining ties are
+    broken by a hash of (permno, yyyymm), so results do not depend on row order.
     """
-    df = df[df.groupby("yyyymm")["permno"].transform("count") >= 10]
+    month = df.groupby("yyyymm")
+    keep = (month["permno"].transform("count") >= 10) & (month[pred].transform("nunique") >= 10)
+    df = df[keep]
     if df.empty:
         return pd.DataFrame(columns=["ew", "vw"], dtype=float)
-    rank = df.groupby("yyyymm")[pred].rank(method="first")
+    tiebreak = pd.util.hash_pandas_object(df[["permno", "yyyymm"]], index=False)
+    df = df.assign(_tb=tiebreak.to_numpy()).sort_values(["yyyymm", pred, "_tb"])
+    rank = df.groupby("yyyymm").cumcount() + 1
     n = df.groupby("yyyymm")[pred].transform("count")
     decile = np.ceil(rank * 10 / n).astype(int)
     legs = df.assign(leg=np.select([decile == 10, decile == 1], [1, -1], 0))

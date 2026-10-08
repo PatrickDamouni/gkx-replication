@@ -136,3 +136,40 @@ def test_annualized_sharpe_hand_example():
 
     # mean 0.02, sample sd 0.0141421 -> monthly 1.41421 -> × √12
     assert sharpe(pd.Series([0.01, 0.03])) == pytest.approx(np.sqrt(2) * np.sqrt(12))
+
+
+def test_constant_forecast_forms_no_portfolio():
+    """Ties used to fall back to row (permno) order: a constant forecast earned a spread (council 4)."""
+    from gkx.metrics import decile_long_short
+
+    rng = np.random.default_rng(0)
+    df = pd.DataFrame(
+        {
+            "yyyymm": 200001,
+            "permno": range(100),
+            "pred": 0.0,
+            "me_lag": 1.0,
+            "target": np.linspace(-0.05, 0.05, 100),
+        }  # returns rise with permno
+    )
+    assert decile_long_short(df, "pred").empty
+    df["pred"] = rng.integers(0, 3, size=100).astype(float)  # only 3 distinct forecasts
+    assert decile_long_short(df, "pred").empty
+
+
+def test_tie_breaking_does_not_depend_on_row_order():
+    from gkx.metrics import decile_long_short
+
+    rng = np.random.default_rng(1)
+    df = pd.DataFrame(
+        {
+            "yyyymm": 200001,
+            "permno": range(200),
+            "me_lag": rng.uniform(1, 5, 200),
+            "target": rng.normal(size=200),
+            "pred": np.repeat(np.arange(20.0), 10),
+        }  # heavy ties
+    )
+    a = decile_long_short(df, "pred")
+    b = decile_long_short(df.sample(frac=1, random_state=3), "pred")
+    pd.testing.assert_frame_equal(a, b)

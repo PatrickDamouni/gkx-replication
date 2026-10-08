@@ -54,7 +54,7 @@ def test_macro_joins_on_the_signal_month():
     chars = pd.DataFrame({"permno": [1], "yyyymm": [200001], "BM": [0.1]})
     crsp = _crsp([(1, 200001, 0.0, 1.0, 1.0, 10, 1), (1, 200002, 0.01, 1.0, 1.0, 10, 1)])
     row = build_panel(chars, crsp, MACRO, char_cols=["BM"]).iloc[0]
-    assert (row["dp"], row["tbl"]) == (-3.5, 0.05)  # 200001 values, not 200002
+    assert (row["m_dp"], row["m_tbl"]) == (-3.5, 0.05)  # 200001 values, not 200002
 
 
 def test_panel_up_to_a_return_month_ignores_everything_later():
@@ -87,3 +87,24 @@ def test_passthrough_columns_are_carried_unranked_from_the_signal_month():
     )
     out = build_panel(chars, crsp, MACRO, char_cols=["BM"], keep=["sic2"]).set_index("permno")
     assert out.loc[1, "sic2"] == 35 and out.loc[2, "sic2"] == 60
+
+
+def test_macro_predictors_are_prefixed_so_they_never_collide_with_characteristics():
+    """datashare has chars bm/ep and Welch-Goyal has macro bm/ep (council 4, all three members)."""
+    chars = pd.DataFrame({"permno": [1], "yyyymm": [200001], "bm": [0.7], "ep": [0.1]})
+    crsp = _crsp([(1, 200001, 0.0, 1.0, 1.0, 10, 1), (1, 200002, 0.01, 1.0, 1.0, 10, 1)])
+    macro = pd.DataFrame({"yyyymm": [200001], "bm": [0.5], "ep": [-2.8], "dp": [-3.5]})
+    out = build_panel(chars, crsp, macro, char_cols=["bm", "ep"])
+    assert {"bm", "ep", "m_bm", "m_ep", "m_dp"} <= set(out.columns)
+    assert not any(c.endswith(("_x", "_y")) for c in out.columns)
+    assert out["m_bm"].iloc[0] == 0.5  # the market's B/M, distinct from the stock's
+
+
+def test_nullable_input_dtypes_come_out_as_plain_numpy_floats():
+    """CRSP loads as pandas Float64/Int64; to_numpy() on those gives dtype=object (council 4)."""
+    chars = pd.DataFrame({"permno": [1], "yyyymm": [200001], "bm": [0.7]})
+    crsp = _crsp([(1, 200001, 0.0, 1.0, 1.0, 10, 1), (1, 200002, 0.01, 2.0, 1.0, 10, 1)]).astype(
+        {"ret_excess": "Float64", "me": "Float64", "shrcd": "Int64"}
+    )
+    out = build_panel(chars, crsp, MACRO, char_cols=["bm"])
+    assert out[["target", "me_lag", "bm"]].to_numpy().dtype == np.float64
