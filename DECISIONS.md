@@ -227,3 +227,38 @@ This file is the interview script.
   within 1e-4 in 98.0% of 3,734,245 rows (residual consistent with our delisting adjustment); vs CRSP
   ret at s+1: corr −0.009 → no lookahead in the conversion or the source. mvel1(s) / CRSP ME(s) =
   1.0000 (median). 29,946 permnos ≈ the all-securities universe (D020: 29,943).
+
+## D024 — Characteristic mapping rule: concept gates, measurement validates (2026-10-08, before any return-based fit)
+- **Supersedes** the argmax-|ρ| draft (commit 2eb612a), which local council 3 showed produces
+  false matches: tail-only binary signals (MomRev, AccrualsBM overlap 7–9% of rows → inflated ρ),
+  a Predictor-only search space, and a ~4-month quarterly timing offset.
+- **Priority per GKX characteristic:**
+  1. Exact rebuild from CRSP (mvel1, mom1m, mom6m, mom12m, mom36m, chmom), accepted only if it
+     agrees with datashare at ρ ≥ 0.99 and ≥ 95% equal values.
+  2. Else an OSAP Predictor whose *documented definition* (OSAP `Detailed Definition` vs GHZ 2017
+     appendix) measures the same quantity; differences allowed only in horizon, frequency,
+     filters or industry adjustment. Written concept note required.
+  3. Else missing (imputed like any missing characteristic). OSAP Placebos are not published
+     (checked: openassetpricing 0.0.2 and openassetpricing.com/data offer only the 209
+     Predictors), so Placebo-only characteristics are missing.
+- **Validation of an accepted concept match:** timing shift fixed by frequency from datashare's
+  readme, not by search (annual 0; quarterly +4 months); mean monthly Spearman ρ ≥ 0.80 =
+  validated, 0.60–0.80 = labelled proxy, < 0.60 = missing; OSAP coverage ≥ 70% of datashare's
+  non-missing rows; ≥ 5 distinct values; each OSAP column used at most once; sign taken from
+  definitions, never from measured ρ.
+- **Representation:** a committed, reviewed `config/feature_map.csv` enforced by tests; the
+  measurement script only writes evidence (`results/feature_map_measured.csv`).
+- **Comparison:** the OSAP run uses the accepted subset S, and datashare is rerun on the same S,
+  so "data build" is not confounded with "fewer features".
+- **Disclosure:** the concept review happened after seeing the draft correlations. No return
+  data has been used with the map; the rule is mechanical and fixed here.
+
+## D025 — Holdout: two arms, sources never mixed; and a stated deviation from the prereg (2026-10-08)
+- **Arm A (primary):** trained and tested on datashare characteristics, holdout = 2017-01 →
+  datashare's last month (≈2021 by row count; confirmed only at unseal).
+- **Arm B:** trained and tested on the OSAP-mapped subset S (D024), holdout 2017-01 → 2024-12.
+- On overlapping holdout years both arms are reported; the gap measures the data-source effect.
+  A model is never trained on one source and tested on the other.
+- **Deviation:** PREREGISTRATION.md's question 1 says "independently built data"; D022 made the
+  authors' own data primary, so the independent build (Arm B / OSAP) becomes the robustness
+  check. Made before any return-based results; disclosed here and to be stated in the write-up.
