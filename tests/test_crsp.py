@@ -88,12 +88,13 @@ def test_non_performance_delisting_with_missing_dlret_is_not_imputed():
     assert _one(out, 8, 200002, "ret") == pytest.approx(0.02)
 
 
-def test_universe_is_common_shares_on_nyse_amex_nasdaq_as_of_each_month():
+def test_universe_is_every_security_on_nyse_amex_nasdaq_as_of_each_month():
+    """GKX universe (D020): exchange filter only. shrcd is kept for the common-only robustness run."""
     msf = _msf(
         [
-            (4, "2000-01-31", 0.01, 5.0, 100),  # shrcd 12: not common stock
+            (4, "2000-01-31", 0.01, 5.0, 100),  # shrcd 12 (non-common) is IN the main universe
             (6, "2000-01-31", 0.01, 5.0, 100),
-            (6, "2000-03-31", 0.01, 5.0, 100),
+            (6, "2000-03-31", 0.01, 5.0, 100),  # moved off-exchange by then: OUT
         ]
     )
     names = _names(
@@ -101,10 +102,12 @@ def test_universe_is_common_shares_on_nyse_amex_nasdaq_as_of_each_month():
             (4, "1990-01-01", "2010-12-31", 12, 1),
             (6, "1990-01-01", "2000-02-15", 10, 1),
             (6, "2000-02-16", "2010-12-31", 10, 4),
-        ]  # moves off-exchange
+        ]
     )
     out = build_returns(msf, _delist([]), names, RF)
-    assert set(zip(out["permno"], out["yyyymm"], strict=True)) == {(6, 200001)}
+    assert set(zip(out["permno"], out["yyyymm"], strict=True)) == {(4, 200001), (6, 200001)}
+    common = out[out["shrcd"].isin([10, 11])]
+    assert set(common["permno"]) == {6}
 
 
 def test_the_sql_seals_the_holdout_server_side():

@@ -178,3 +178,15 @@ This file is the interview script.
 - **Value weights:** ME = |prc| × shrout / 1000 ($M); `me_lag` = ME in the signal month (t−1),
   matched by month key, NaN across gaps.
 - **Cost:** legacy data ends 2024-12, so the Phase 5 holdout is 2017-01 → 2024-12 (8 years).
+
+## D020 — Universe: every security on NYSE/AMEX/NASDAQ, as in GKX; common shares as robustness (2026-10-08)
+- **Evidence:** with the exchange filter only, 1957-03..2016-12 contains 29,943 permnos (GKX: "almost
+  30,000"); a later paper reusing GKX's data says no further filters were imposed. Common shares
+  only (shrcd 10/11) gives ~24,400. Mean securities/month: 5,216 all vs 4,303 common-only. (An
+  earlier recollection of "6,200 per month" could not be verified and is not relied on.)
+- **Chose:** main run = exchange filter only (exchcd 1/2/3 as of each month); `shrcd` kept on every
+  row; a second run restricted to shrcd 10/11 checks that ADRs/REITs/funds don't drive results.
+- **Supersedes** the shrcd 10/11 filter in D019.
+- **Validation of the CRSP build (common-only version, before this change):** value-weighted
+  excess return vs `ff.factors_monthly.mktrf`, 1957-03..2016-12, 718 months: corr 1.0000, mean
+  difference −0.002%/month, tracking sd 0.018%/month.

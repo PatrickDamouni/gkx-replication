@@ -26,7 +26,8 @@ QUERY_NAMES = "select permno, namedt, nameendt, shrcd, exchcd from crsp.msenames
 QUERY_RF = f"select date, rf from ff.factors_monthly where date < '{_CUTOFF}'"
 
 OUT_PATH = Path("data/raw/crsp_returns_pre2017.parquet")
-COMMON_SHARES, EXCHANGES = (10, 11), (1, 2, 3)
+EXCHANGES = (1, 2, 3)  # GKX universe: every security on NYSE/AMEX/NASDAQ (D020)
+COMMON_SHARES = (10, 11)  # robustness run only: filter on the shrcd column
 SHUMWAY = {1: -0.30, 2: -0.30, 3: -0.55}  # missing performance DLRET by exchange (D019)
 
 
@@ -63,7 +64,7 @@ def build_returns(
     df = df.merge(rf_m, on="yyyymm", how="left", validate="many_to_one")
     df["ret_excess"] = df["ret"] - df["rf"]
 
-    universe = df["shrcd"].isin(COMMON_SHARES) & df["exchcd"].isin(EXCHANGES)
+    universe = df["exchcd"].isin(EXCHANGES)
     cols = ["permno", "yyyymm", "ret", "ret_excess", "me", "me_lag", "shrcd", "exchcd"]
     return df.loc[universe, cols].sort_values(["yyyymm", "permno"]).reset_index(drop=True)
 
