@@ -213,3 +213,17 @@ This file is the interview script.
 - **Rejected:** OSAP-only (confounds data and method differences); datashare-only (no
   independent-build check, possible holdout coverage gap).
 - Datashare is streamed to Parquet without unzipping and split at ingest like every other source.
+
+## D023 — datashare timing: DATE is the return month; stored as signal month; verified on CRSP (2026-10-08)
+- **Source:** `datashare.zip` sha256 `5de63312a9b4d8e340c3b69c2d3f2682cd834705aff695922227e6f93ce4bbf3`
+  (readme "This Version: April 2019"); 4,117,300 rows, 94 characteristics + sic2.
+  **Holdout sha256 `9a87fbf7153c2a4d6d61ac93196df24f59a6f4d590566d2e780a0965e5a1881b`**, read-only in
+  `data/sealed/`; zip deleted.
+- **Convention:** the readme says DATE=19570329 → response RET at 195703, i.e. rows are keyed on the
+  return month with characteristics pre-lagged (monthly ≥1, quarterly ≥4, annual ≥6 months). We
+  store `yyyymm` = DATE month − 1 (signal month) so datashare and OSAP share one convention and both
+  go through `align` (test: `tests/test_datashare.py`).
+- **Empirical check (pre-2017 only):** mom1m at signal month s vs CRSP ret at s: corr 0.936, equal
+  within 1e-4 in 98.0% of 3,734,245 rows (residual consistent with our delisting adjustment); vs CRSP
+  ret at s+1: corr −0.009 → no lookahead in the conversion or the source. mvel1(s) / CRSP ME(s) =
+  1.0000 (median). 29,946 permnos ≈ the all-securities universe (D020: 29,943).
