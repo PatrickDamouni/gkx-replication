@@ -202,3 +202,14 @@ This file is the interview script.
 - **Sealed:** split at ingest; **holdout sha256 `4d2640cc569645deaa94cab27bd51ac32e3469eb72371660a3fd07110360448e`**
   in read-only `data/sealed/`; xlsx and full Parquet deleted. Pre-2017 file: 718 signal months
   1957-02 → 2016-11 with no missing values.
+
+## D022 — Characteristics: GKX's own datashare primary; OSAP as an independent-rebuild check (2026-10-08)
+- **Revises D013.** Dacheng Xiu (GKX co-author) publishes the paper's 94-characteristic dataset
+  (`datashare.zip`, dachxiu.chicagobooth.edu, research use only, last modified 2026-02-26).
+- **Chose:** replication runs on datashare characteristics (exact GKX inputs), so any gap to the
+  paper isolates method differences from data-build differences. The same models are rerun on
+  OSAP signals mapped to GKX's list as a robustness check on an independent build; OSAP also
+  supplies characteristics for any holdout years datashare does not cover.
+- **Rejected:** OSAP-only (confounds data and method differences); datashare-only (no
+  independent-build check, possible holdout coverage gap).
+- Datashare is streamed to Parquet without unzipping and split at ingest like every other source.
