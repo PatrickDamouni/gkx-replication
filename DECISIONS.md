@@ -81,3 +81,40 @@ This file is the interview script.
   pinned in `tests/test_align.py`.
 - **Rejected:** Keeping the zip "just in case" (an unsealed copy defeats the seal; it is
   re-downloadable and verifiable by the hash above).
+
+## D010 — Significance tests: Clark–West for nested pairs, paired ΔR² bootstrap for the ranking (2026-10-08, before any returns data)
+- **Chose:** Clark–West (2007) for nested comparisons (any model vs. zero forecast; OLS-3 vs.
+  OLS-all); Diebold–Mariano for non-nested pairs; tests run on per-month *sums* so they weight
+  months the way pooled R² does. The pre-committed ranking (NN/trees > ENet > OLS-all) is tested
+  with a paired month-block bootstrap CI on ΔR². HAC lag and block length to be fixed in the
+  seam-4 commit, before data.
+- **Rejected:** DM everywhere (undersized under the null for nested models).
+- **Why:** The prereg's success criterion is a ranking plus "beats baseline"; these are the tests
+  that answer those questions correctly. Source: local council 2.
+
+## D011 — Linear baselines reported with both squared and Huber loss (2026-10-08)
+- **Chose:** OLS-3, OLS-all and ENet each run with squared loss and with Huber loss (GKX's "+H").
+- **Rejected:** Squared loss only (inflates the ML-vs-linear gap relative to GKX); Huber only.
+- **Why:** Matches the paper and shows how much the loss choice matters. Both variants count as
+  trials for the deflated Sharpe ratio.
+
+## D012 — Tree models get raw characteristics + macro predictors, not explicit interactions (2026-10-08)
+- **Chose:** RF/GBRT see characteristics and macro predictors as separate inputs.
+- **Rejected:** Materialized char × macro interactions (~1,950 cols × ~4M rows ≈ 32 GB float32;
+  sklearn histogram GBM casts to float64); row subsampling.
+- **Why:** Trees learn interactions through splits; this is a stated deviation from GKX's inputs.
+
+## D013 — Feature set mapped to GKX's ~94 characteristics (2026-10-08)
+- **Chose:** Map OSAP signals to GKX's characteristic list; document each match and each
+  characteristic without an OSAP counterpart in `docs/feature_map.md`.
+- **Rejected:** All 209 OSAP signals (less like-for-like, ~2× memory). Possible later extension.
+- **Why:** Fidelity to the paper and half the width.
+
+## D014 — Panel keyed on return month; models never receive the label (2026-10-08)
+- **Bug found by council 2 (reproduced by 4 of 5 members):** `Fold` windows are GKX return months,
+  but the aligned panel was keyed on signal month, so the Dec-2016 signal needed a sealed
+  Jan-2017 return and would silently drop; and a model reading its own row's label passed the
+  future-invariance check.
+- **Fix:** `align` keys rows on the return month (`yyyymm`), keeps `signal_month` as metadata, and
+  drops rows whose return month is in the holdout. `evaluate` (seam 5) passes models only an
+  explicit feature list, so the label is structurally unreachable.

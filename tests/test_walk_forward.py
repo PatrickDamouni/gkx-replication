@@ -18,8 +18,12 @@ SNAPSHOT = Path(__file__).parent / "snapshots" / "walk_forward.txt"
 def test_first_and_last_folds_match_the_paper():
     folds = walk_forward()
     assert len(folds) == 30
-    assert folds[0] == Fold(refit=1987, train=(195703, 197412), val=(197501, 198612), test=(198701, 198712))
-    assert folds[-1] == Fold(refit=2016, train=(195703, 200312), val=(200401, 201512), test=(201601, 201612))
+    assert folds[0] == Fold(
+        refit=1987, train=(195703, 197412), val=(197501, 198612), test=(198701, 198712)
+    )
+    assert folds[-1] == Fold(
+        refit=2016, train=(195703, 200312), val=(200401, 201512), test=(201601, 201612)
+    )
 
 
 def test_train_expands_validation_rolls_and_windows_never_overlap():

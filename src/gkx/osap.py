@@ -26,7 +26,9 @@ RAW_DIR = Path("data/raw")
 ZIP_PATH = RAW_DIR / f"osap_firm_char_{RELEASE}.zip"
 PARQUET_PATH = RAW_DIR / f"osap_firm_char_{RELEASE}.parquet"  # transient: deleted after split
 PRE_PATH = RAW_DIR / f"osap_firm_char_{RELEASE}_pre2017.parquet"
-HOLDOUT_PATH = RAW_DIR / f"osap_firm_char_{RELEASE}_holdout.parquet"  # sealed until Phase 5
+HOLDOUT_PATH = (
+    Path("data/sealed") / f"osap_firm_char_{RELEASE}_holdout.parquet"
+)  # read-only, sealed until Phase 5
 DOC_PATH = RAW_DIR / f"osap_signal_doc_{RELEASE}.csv"
 CHUNK_ROWS = 500_000
 
@@ -92,8 +94,11 @@ def main() -> int:
 
 def seal() -> None:
     """Split the full panel at ingest and delete it, so no unsealed copy remains (D008)."""
+    HOLDOUT_PATH.parent.mkdir(exist_ok=True)
     digest = split_holdout(PARQUET_PATH, PRE_PATH, HOLDOUT_PATH)
     PARQUET_PATH.unlink()
+    ZIP_PATH.unlink(missing_ok=True)  # also an unsealed copy (D009)
+    HOLDOUT_PATH.chmod(0o444)
     print(f"pre-2017 -> {PRE_PATH}\nholdout  -> {HOLDOUT_PATH}\nholdout sha256 {digest}")
 
 

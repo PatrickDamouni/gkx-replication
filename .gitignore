@@ -8,4 +8,4 @@ data/processed/*
 *.parquet
 *.csv
 .DS_Store
-.claude/council-cache/
+data/sealed/

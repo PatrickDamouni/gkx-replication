@@ -1,10 +1,14 @@
-"""Pair each signal month t with the excess return in month t+1.
+"""Pair each signal month t with the excess return in month t+1, keyed on the return month.
 
 This join is the most likely place for lookahead in the whole project, so it
-lives in one function with its own tests (D008).
+lives in one function with its own tests (D008). Rows are keyed on the return
+month because GKX's windows are return months (D014): `yyyymm` is when the
+target is realized, `signal_month` is when the features were known.
 """
 
 import pandas as pd
+
+from gkx.panel import HOLDOUT_START
 
 
 def next_month(yyyymm: pd.Series) -> pd.Series:
@@ -14,14 +18,13 @@ def next_month(yyyymm: pd.Series) -> pd.Series:
 
 
 def align(signals: pd.DataFrame, returns: pd.DataFrame) -> pd.DataFrame:
-    """Left-join `returns.ret_excess` at t+1 onto `signals` at t as `ret_excess_next`.
+    """Re-key `signals` from signal month t to return month t+1 and attach `target`.
 
-    A missing t+1 return stays NaN; it is never filled from a later month.
+    A missing t+1 return stays NaN; it is never filled from a later month. Rows
+    whose return month is in the sealed holdout are excluded.
     """
-    nxt = returns[["permno", "yyyymm", "ret_excess"]].rename(
-        columns={"yyyymm": "label_month", "ret_excess": "ret_excess_next"}
-    )
-    out = signals.assign(label_month=next_month(signals["yyyymm"]))
-    return out.merge(nxt, on=["permno", "label_month"], how="left", validate="one_to_one").drop(
-        columns="label_month"
-    )
+    out = signals.rename(columns={"yyyymm": "signal_month"})
+    out.insert(1, "yyyymm", next_month(out["signal_month"]))
+    out = out[out["yyyymm"] < HOLDOUT_START]
+    target = returns[["permno", "yyyymm", "ret_excess"]].rename(columns={"ret_excess": "target"})
+    return out.merge(target, on=["permno", "yyyymm"], how="left", validate="one_to_one")

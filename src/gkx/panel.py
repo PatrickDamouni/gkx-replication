@@ -19,7 +19,9 @@ class SealedHoldoutError(Exception):
     """Raised when code asks for a month inside the sealed holdout."""
 
 
-def load_panel(path: Path, end: int = HOLDOUT_START - 1, columns: list[str] | None = None) -> pd.DataFrame:
+def load_panel(
+    path: Path, end: int = HOLDOUT_START - 1, columns: list[str] | None = None
+) -> pd.DataFrame:
     """Read a (permno, yyyymm, ...) Parquet panel up to and including `end`.
 
     Rows from the holdout are filtered out by the Parquet reader, so they never
@@ -42,8 +44,18 @@ def split_holdout(src: Path, pre_out: Path, holdout_out: Path) -> str:
     """
     dataset = ds.dataset(src, format="parquet")
     month = ds.field("yyyymm")
-    for out, cond in ((pre_out, month < HOLDOUT_START), (holdout_out, month >= HOLDOUT_START)):
+    written = 0
+    for out, cond in (
+        (pre_out, month < HOLDOUT_START),
+        (holdout_out, month >= HOLDOUT_START),
+    ):
         with pq.ParquetWriter(out, dataset.schema, compression="zstd") as writer:
             for batch in dataset.to_batches(filter=cond):
                 writer.write_batch(batch)
+                written += batch.num_rows
+    total = dataset.count_rows()
+    if written != total:
+        raise ValueError(
+            f"split wrote {written} of {total} rows; {total - written} have no usable yyyymm"
+        )
     return hashlib.sha256(holdout_out.read_bytes()).hexdigest()

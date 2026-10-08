@@ -4,7 +4,8 @@ from dataclasses import dataclass
 
 from gkx.panel import HOLDOUT_START, SealedHoldoutError
 
-Window = tuple[int, int]  # inclusive (first yyyymm, last yyyymm)
+# Inclusive (first, last) RETURN month as yyyymm; matches align() keying (D014).
+Window = tuple[int, int]
 
 
 @dataclass(frozen=True)

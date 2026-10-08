@@ -43,3 +43,19 @@ def test_split_at_ingest_partitions_rows_and_fingerprints_the_holdout(straddling
     assert sorted(pd.read_parquet(pre)["yyyymm"]) == [201611, 201612, 201612]
     assert list(pd.read_parquet(holdout)["yyyymm"]) == [201701]
     assert digest == hashlib.sha256(holdout.read_bytes()).hexdigest()
+
+
+def test_split_refuses_to_lose_rows(tmp_path):
+    """A null yyyymm matches neither side of the split; that must fail loudly, not vanish."""
+    from gkx.panel import split_holdout
+
+    src = tmp_path / "src.parquet"
+    pd.DataFrame(
+        {
+            "permno": [1, 2],
+            "yyyymm": pd.array([201612, None], dtype="Int64"),
+            "BM": [0.1, 0.2],
+        }
+    ).to_parquet(src)
+    with pytest.raises(ValueError, match="1 of 2 rows"):
+        split_holdout(src, tmp_path / "pre.parquet", tmp_path / "hold.parquet")
