@@ -262,3 +262,24 @@ This file is the interview script.
 - **Deviation:** PREREGISTRATION.md's question 1 says "independently built data"; D022 made the
   authors' own data primary, so the independent build (Arm B / OSAP) becomes the robustness
   check. Made before any return-based results; disclosed here and to be stated in the write-up.
+
+## D026 — Characteristic map frozen (tag `map-v1`), before any return-based fit (2026-10-08)
+- **Result** (`results/feature_map_measured.md`): of 94 GKX characteristics, **35 validated** (6 exact
+  CRSP rebuilds + 29 OSAP), **7 labelled proxies** (beta, betasq, acc, chatoia, tb, roeq, baspread),
+  **52 missing** (27 with no published counterpart — mostly OSAP Placebos; 25 failed validation).
+  Arm B (D025) therefore uses the 42 validated + proxy characteristics, and Arm A is rerun on the
+  same 42 for the like-for-like comparison.
+- **Applied as written, including against intuition:** ep (ρ 0.90, coverage 67%), operprof (ρ 0.96,
+  45%), orgcap, tang, ps, sin, rd fail D024's 70% coverage bar because of OSAP's own filters
+  (e.g. excluding negative earnings, manufacturing-only); they are missing, not re-thresholded.
+  ear fails at the fixed +4 quarterly shift (council 3 saw a peak at +5; shift is not tuned per
+  signal).
+- **Post-hoc, disclosed:** `agr` measured ρ = −0.998 with OSAP AssetGrowth. Distribution check
+  (not ρ): datashare agr median −0.092 with 80% negative; OSAP asset growth median +0.088 → the
+  datashare stores agr negated (GHZ code orientation). Declared transform `negate`; status becomes
+  validated (ρ 0.998). This is the only change made after seeing the measured table.
+- **Interpretation of D024's distinct-values rule:** it applies when the GKX characteristic is
+  non-binary (its purpose was to exclude tail-only binary OSAP signals); binary GKX characteristics
+  (convind, divi, divo, rd, sin) are validated by ρ (phi) and coverage.
+- Every mapped characteristic is rank-normalized within the universe each month (build_panel), so
+  orientation affects interpretation, not model fit.

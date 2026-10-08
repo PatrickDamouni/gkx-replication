@@ -9,3 +9,4 @@ data/processed/*
 *.csv
 .DS_Store
 data/sealed/
+!config/*.csv

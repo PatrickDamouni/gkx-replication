@@ -1,0 +1,95 @@
+gkx,freq,source,signal,transform,shift,concept_note
+mvel1,monthly,crsp,me,identity,0,Market equity; exact CRSP rebuild (results/crsp_chars_validation.md)
+beta,monthly,osap,Beta,identity,0,"Market beta: GHZ weekly returns 3y on EW market; OSAP 60-month monthly regression on EW market (horizon/frequency differ)"
+betasq,monthly,osap,Beta,square,0,GHZ defines betasq as beta squared; derived from the beta mapping (transform exception to one-use)
+chmom,monthly,crsp,chmom,identity,0,Change in 6-month momentum; exact CRSP rebuild incl. GHZ quirk
+dolvol,monthly,osap,DolVol,identity,0,Log dollar trading volume (same quantity)
+idiovol,monthly,osap,IdioVolAHT,identity,0,"Idiosyncratic volatility: sd of market-model residuals (GHZ weekly 3y; OSAP daily 1y; same paper lineage AHT)"
+indmom,monthly,osap,IndMom,identity,0,"Industry momentum: GHZ EW 12-month sic2 mean; OSAP VW 6-month sic2 mean (horizon/weighting differ)"
+mom1m,monthly,crsp,mom1m,identity,0,1-month return; exact CRSP rebuild
+mom6m,monthly,crsp,mom6m,identity,0,Months s-5..s-1 compounded; exact CRSP rebuild
+mom12m,monthly,crsp,mom12m,identity,0,Months s-11..s-1 compounded; exact CRSP rebuild
+mom36m,monthly,crsp,mom36m,identity,0,Months s-35..s-12 compounded; exact CRSP rebuild
+pricedelay,monthly,osap,PriceDelayRsq,identity,0,Hou-Moskowitz price delay (R-squared based D1 measure) in both
+turn,monthly,osap,VolMkt,identity,0,"Share turnover = vol/shrout = dollar volume / ME; OSAP 12-month average with price>=5 filter vs GHZ 3 months"
+absacc,annual,osap,Accruals,abs,0,GHZ defines absacc as absolute value of acc; derived from the acc mapping (transform exception)
+acc,annual,osap,Accruals,identity,0,"Operating accruals scaled by assets (Sloan 1996); OSAP balance-sheet method, GHZ cash-flow method with balance-sheet fallback"
+age,annual,osap,FirmAge,identity,0,"Firm age: GHZ years since first Compustat record; OSAP months since first CRSP record"
+agr,annual,osap,AssetGrowth,negate,0,"Annual growth in total assets (Cooper Gulen Schill); datashare stores it negated: median -0.09, 80% negative (D026)"
+bm,annual,osap,BM,identity,0,"Book equity / ME at fiscal year end (GHZ, Stattman); OSAP uses log tangible book (log is rank-invariant)"
+bm_ia,annual,none,,,0,Industry-adjusted bm: base column BM already used by bm; industry demeaning not in D024
+cashdebt,annual,none,,,0,OSAP Placebo only (not published)
+cashpr,annual,osap,CashProd,identity,0,Cash productivity (same paper: Chandrashekar and Rao 2009)
+cfp,annual,osap,cfp,identity,0,Operating cash flow to price (same quantity)
+cfp_ia,annual,none,,,0,Industry-adjusted cfp: base column cfp already used; industry demeaning not in D024
+chatoia,annual,osap,ChAssetTurnover,identity,0,Change in asset turnover; GHZ industry-adjusted (difference allowed by D024)
+chcsho,annual,osap,ShareIss1Y,identity,0,Annual change in shares outstanding (split-adjusted in OSAP)
+chempia,annual,none,,,0,Industry-adjusted employee growth: base column hire already used by hire
+chinv,annual,osap,ChInv,identity,0,Change in inventory scaled by assets (same quantity; Thomas and Zhang)
+chpmia,annual,none,,,0,Base signal ChPM is an OSAP Placebo (not published)
+convind,annual,osap,ConvDebt,identity,0,Convertible debt indicator (same binary)
+currat,annual,none,,,0,OSAP Placebo only (not published)
+depr,annual,none,,,0,OSAP Placebo only (not published)
+divi,annual,osap,DivInit,identity,0,Dividend initiation indicator (same paper: Michaely Thaler Womack)
+divo,annual,osap,DivOmit,identity,0,Dividend omission indicator (same paper: Michaely Thaler Womack)
+dy,annual,none,,,0,"OSAP DivYieldAnn is a Placebo; NetPayoutYield adds repurchases and issuance (different quantity)"
+egr,annual,osap,ChEQ,identity,0,Growth in book equity (same quantity)
+ep,annual,osap,EP,identity,0,Earnings to price (same quantity)
+gma,annual,osap,GP,identity,0,Gross profits to assets (same quantity; Novy-Marx)
+grcapx,annual,osap,grcapx,identity,0,Two-year growth in capital expenditures (same quantity)
+grltnoa,annual,osap,GrLTNOA,identity,0,Growth in long-term net operating assets (same paper: Fairfield Whisenant Yohn)
+herf,annual,osap,Herf,identity,0,"Industry sales concentration (Hou and Robinson); OSAP 3-digit SIC, 3-year average"
+hire,annual,osap,hire,identity,0,Employee growth rate (same quantity)
+invest,annual,osap,InvestPPEInv,identity,0,Change in PP&E plus inventory scaled by assets (same quantity)
+lev,annual,osap,Leverage,identity,0,Liabilities to market equity (same quantity)
+lgr,annual,none,,,0,"Growth in total liabilities; OSAP DelFINL covers financial liabilities only, scaled by assets (different quantity)"
+mve_ia,annual,none,,,0,Industry-adjusted size: industry demeaning not in D024
+operprof,annual,osap,OperProf,identity,0,Operating profits to book equity (same quantity; Fama-French)
+orgcap,annual,osap,OrgCap,identity,0,Organizational capital (same paper: Eisfeldt and Papanikolaou)
+pchcapx_ia,annual,osap,ChInvIA,identity,0,Industry-adjusted change in capex (same paper: Abarbanell and Bushee)
+pchcurrat,annual,none,,,0,OSAP Placebo only (not published)
+pchdepr,annual,none,,,0,OSAP Placebo only (not published)
+pchgm_pchsale,annual,none,,,0,OSAP GrGMToGrSales is a Placebo (not published)
+pchquick,annual,none,,,0,OSAP Placebo only (not published)
+pchsale_pchinvt,annual,osap,GrSaleToGrInv,identity,0,Sales growth minus inventory growth (same quantity; Abarbanell and Bushee)
+pchsale_pchrect,annual,none,,,0,OSAP GrSaleToGrReceivables is a Placebo (not published)
+pchsale_pchxsga,annual,osap,GrSaleToGrOverhead,identity,0,Sales growth minus SG&A growth (same quantity; Abarbanell and Bushee)
+pchsaleinv,annual,none,,,0,OSAP Placebo only; GrSaleToGrInv already used by pchsale_pchinvt
+pctacc,annual,osap,PctAcc,identity,0,Accruals scaled by absolute earnings (same quantity; Hafzalla et al.)
+ps,annual,osap,PS,identity,0,Piotroski F-score (same score)
+quick,annual,none,,,0,OSAP Placebo only (not published)
+rd,annual,osap,SurpriseRD,identity,0,R&D increase indicator (same paper: Eberhart Maxwell Siddique)
+rd_mve,annual,osap,RD,identity,0,R&D expense to market equity (same quantity)
+rd_sale,annual,none,,,0,OSAP Placebo only (not published)
+realestate,annual,osap,realestate,identity,0,Real estate holdings to PP&E (same quantity; Tuzel)
+roic,annual,none,,,0,OSAP Placebo only (not published)
+salecash,annual,none,,,0,OSAP Placebo only (not published)
+saleinv,annual,none,,,0,OSAP Placebo only (not published)
+salerec,annual,none,,,0,OSAP Placebo only (not published)
+secured,annual,none,,,0,OSAP Placebo only (not published)
+securedind,annual,none,,,0,OSAP Placebo only (not published)
+sgr,annual,none,,,0,OSAP Placebo only (not published)
+sin,annual,osap,sinAlgo,identity,0,Sin stock indicator (same paper: Hong and Kacperczyk)
+sp,annual,osap,SP,identity,0,Sales to price (same quantity)
+tang,annual,osap,tang,identity,0,Debt capacity / tangibility (same quantity; Almeida and Campello)
+tb,annual,osap,Tax,identity,0,Taxable income to book income (same paper: Lev and Nissim)
+aeavol,quarterly,none,,,0,Abnormal earnings-announcement volume (Lerman et al.): no OSAP Predictor
+cash,quarterly,osap,Cash,identity,4,Cash and short-term investments to assets (quarterly; same quantity)
+chtx,quarterly,osap,ChTax,identity,4,4-quarter change in quarterly taxes scaled by assets (same paper: Thomas and Zhang)
+cinvest,quarterly,osap,Investment,identity,4,Corporate investment relative to past average (same paper: Titman Wei Xie)
+ear,quarterly,osap,AnnouncementReturn,identity,4,Earnings-announcement abnormal return (same paper: Chan Jegadeesh Lakonishok)
+nincr,quarterly,osap,NumEarnIncrease,identity,4,Number of consecutive quarterly earnings increases (up to 8 in both)
+roaq,quarterly,osap,roaq,identity,4,Quarterly income before extraordinary items over lagged assets (same quantity)
+roavol,quarterly,none,,,0,OSAP Placebo only (not published)
+roeq,quarterly,osap,RoE,identity,0,"Return on equity; OSAP is annual (ni/ceq), GHZ quarterly: frequency differs, annual timing so no shift"
+rsup,quarterly,osap,RevenueSurprise,identity,4,Revenue surprise per share (same paper: Jegadeesh and Livnat)
+stdacc,quarterly,none,,,0,Accrual volatility: no OSAP Predictor
+stdcf,quarterly,osap,VarCF,identity,0,"Cash-flow volatility; OSAP variance of cash flow to price over 60 months (annual data, scaled by price: different scaling)"
+ms,quarterly,osap,MS,identity,0,"Mohanram G-score (same score); OSAP evaluates low-BM firms only"
+baspread,monthly,osap,BidAskSpread,identity,0,"Bid-ask spread; OSAP Corwin-Schultz estimator, GHZ daily-based average (different estimator)"
+ill,monthly,osap,Illiquidity,identity,0,Amihud illiquidity (same quantity)
+maxret,monthly,osap,MaxRet,identity,0,Maximum daily return in the previous month (same quantity)
+retvol,monthly,osap,RealizedVol,identity,0,"Volatility of daily returns over the previous month; OSAP doc text says CAPM residuals but LongDescription says total volatility"
+std_dolvol,monthly,osap,VolSD,identity,0,"Volatility of trading volume; OSAP monthly share volume over 36 months, NYSE only (horizon/filter differ)"
+std_turn,monthly,osap,std_turn,identity,0,"Volatility of turnover; OSAP monthly over 36 months vs GHZ daily within month (horizon differs)"
+zerotrade,monthly,osap,zerotrade1M,identity,0,Zero-trading days in the previous month (same quantity; Liu 2006)
