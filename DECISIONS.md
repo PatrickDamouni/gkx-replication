@@ -283,3 +283,29 @@ This file is the interview script.
   (convind, divi, divo, rd, sin) are validated by ρ (phi) and coverage.
 - Every mapped characteristic is rank-normalized within the universe each month (build_panel), so
   orientation affects interpretation, not model fit.
+
+## D027 — The 1987–2016 test window is touched once, for all models together (2026-10-08)
+- **Chose (council 4: Devil's Advocate + Performance):** every model — baselines included — is
+  developed and debugged on a rehearsal walk-forward whose test years are 1975–1986
+  (`walk_forward(first_test_year=1975, last_test_year=1986)`). When harness, numerics, grids,
+  seeds and every model family's code are frozen (git tag), all models are run on 1987–2016 in a
+  single pass. `evaluate()` refuses any fold with test months ≥ 1987-01 unless explicitly unlocked
+  from a clean git tree.
+- **Rejected (council 4: Simplicity):** baselines on the test window as soon as bugs are fixed —
+  earlier feedback, but test-window numbers could shape the panel and later model choices.
+- **Cost:** no real test-window numbers until Phase 3 is complete.
+
+## D028 — What counts as a trial for the deflated Sharpe ratio (2026-10-08)
+- **Counts:** every configuration × seed of the candidate models in Arm A (94 characteristics).
+- **Reported but not counted:** zero forecast (a column of zeros, not a model run), OLS baselines,
+  and robustness reruns (Arm A-42, Arm B, common-shares only). The ledger records a
+  `counts_as_trial` flag per run.
+
+## D029 — Model scope fixed before any test-window look (2026-10-08)
+- **In:** linear family (OLS, OLS-3, ENet, PCR, PLS, GLM) each with squared and Huber loss where
+  GKX use Huber; gradient-boosted trees and random forest via LightGBM; NN1–NN3 with 5 seeds each.
+- **Out:** NN4, NN5 (GKX find no gain beyond NN3); exact-split sklearn RF (compute).
+- **Why:** council 4 Performance estimated the full set at ~150–300 laptop hours; this scope is
+  ~40–80 h. The linear family uses exact Kronecker sufficient statistics
+  (X'X = Σ_t (x_t x_t') ⊗ (C_t'C_t)), so it never materializes 920 columns.
+- Grids, early-stopping rules and library versions are fixed in the Phase 3 plan before the test look.
