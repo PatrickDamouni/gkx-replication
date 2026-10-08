@@ -136,3 +136,19 @@ This file is the interview script.
   - **T = 360 months (our test length): DM rejects 0.0%, Clark–West 5.8%** (MC se 1.1%).
 - **Reading:** plain DM would almost never declare a nested model better even when it is; CW is
   correctly sized at our sample length. Reproduce with the loop in `tests/test_metrics.py`.
+
+## D017 — Power analysis result and the ranking test it implies (2026-10-08, before any returns data)
+- **Result** (`results/power_analysis.md`, oracle upper bound, T=360, N=6000, factor + fat tails):
+  detectability of a model gap depends on how *stable* the incremental signal's payoff is
+  (its long-short Sharpe), far more than on the size of ΔR².
+  - Clark–West power: 84–92% at signal Sharpe 0.5; 100% at Sharpe ≥ 1 (all ΔR² 0.1–0.4%).
+  - Paired ΔR² 95% CI excluding 0: 26–40% at Sharpe 0.5; 74–76% at Sharpe 1; 100% at Sharpe 2.
+  - A first version with a constant premium gave 100% everywhere — uninformative, discarded and
+    noted in the script docstring.
+- **Chose (ex-ante deviation from PREREGISTRATION.md's ranking wording):** the ranking is tested
+  with Clark–West (nested pairs) / Diebold–Mariano (non-nested), one-sided 5%. The paired ΔR² CI
+  is reported as the effect size, not as the pass/fail criterion. A non-significant gap is
+  reported as "not distinguishable", not "replication failed".
+- **Rejected:** ΔR² CI as the criterion (high chance of a false "no difference"); requiring both.
+- **Caveat:** fitted models carry estimation error, so real power is lower than shown. Rerun this
+  script with real CRSP residual volatility once data arrives.
