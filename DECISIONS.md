@@ -162,3 +162,19 @@ This file is the interview script.
   trees use raw inputs (D012).
 - Replaces the planned in-pytest "scale test" (council 2: in-process `ru_maxrss` is a lifetime
   high-water mark and a synthetic refit of nonexistent models measures the wrong thing).
+
+## D019 — CRSP source: legacy monthly file + explicit delisting returns (2026-10-08)
+- **Chose:** `crsp.msf` (legacy SIZ, 1925-12 → 2024-12) merged with `crsp.msedelist`, universe from
+  `crsp.msenames` (shrcd 10/11, exchcd 1/2/3 as of each month), rf from `ff.factors_monthly`
+  (monthly decimal). Pulled with `date < '2017-01-01'` in the SQL, so no holdout return reaches disk.
+- **Rejected:** `crsp.msf_v2` (CIZ). Checked on 2,760 pre-2017 delisting months: its `mthret` equals
+  the compounded (1+ret)(1+dlret)−1 in 84% of cases, but for performance delistings flagged `M`
+  it keeps only the regular return and drops DLRET (e.g. permno 11460, code 560: DLRET −57%,
+  CIZ return +5%). Dropping those losses biases small-cap returns upward (Shumway 1997).
+- **Delisting rule:** return in the delisting month = (1+ret)(1+dlret)−1; if ret is missing, dlret
+  alone. If dlret is missing and the code is performance-related (500, 520–584): impute −30% on
+  NYSE/AMEX, −55% on NASDAQ (Shumway 1997; Shumway & Warther 1999). Affects ~1% of performance
+  delistings (e.g. code 560: 15 of 1,407 missing).
+- **Value weights:** ME = |prc| × shrout / 1000 ($M); `me_lag` = ME in the signal month (t−1),
+  matched by month key, NaN across gaps.
+- **Cost:** legacy data ends 2024-12, so the Phase 5 holdout is 2017-01 → 2024-12 (8 years).
