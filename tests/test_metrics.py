@@ -76,3 +76,63 @@ def test_clark_west_is_correctly_sized_where_dm_is_not_for_nested_models():
         cw_rej += clark_west(df, small="small", big="big")[1] < 0.05
     assert dm_rej / reps < 0.02
     assert 0.02 < cw_rej / reps < 0.10
+
+
+def test_block_bootstrap_resamples_runs_of_consecutive_months_reproducibly():
+    from gkx.metrics import month_block_indices
+
+    idx = month_block_indices(n_months=36, n_boot=50, block=12, seed=3)
+    assert idx.shape == (50, 36)
+    assert (idx == month_block_indices(n_months=36, n_boot=50, block=12, seed=3)).all()
+    steps = np.diff(idx.reshape(50, 3, 12), axis=2) % 36
+    assert (steps == 1).all()  # inside each block, months are consecutive (circularly)
+
+
+def test_paired_delta_r2_is_exactly_zero_for_identical_models():
+    from gkx.metrics import paired_r2_ci
+
+    rng = np.random.default_rng(0)
+    df = _panel(rng, months=48, firms=10)
+    df["target"], df["a"] = rng.normal(size=len(df)), 0.1 * df["x"]
+    df["b"] = df["a"]
+    assert paired_r2_ci(df, "a", "b", n_boot=200) == (0.0, 0.0, 0.0)
+
+
+def test_paired_delta_r2_point_estimate_is_the_difference_of_pooled_r2s():
+    from gkx.metrics import paired_r2_ci
+
+    rng = np.random.default_rng(2)
+    df = _panel(rng, months=48, firms=10)
+    df["target"] = 0.5 * df["x"] + rng.normal(size=len(df))
+    df["zero"], df["good"] = 0.0, 0.5 * df["x"]
+    point, lo, hi = paired_r2_ci(df, "zero", "good", n_boot=500)
+    assert point == pytest.approx(r2_oos(df, "good") - r2_oos(df, "zero"))
+    assert 0 < lo < point < hi
+
+
+def test_decile_long_short_hand_example_equal_and_value_weighted():
+    from gkx.metrics import decile_long_short
+
+    df = pd.DataFrame({"yyyymm": 200001, "permno": range(20), "pred": np.arange(1.0, 21.0)})
+    df["target"] = df["pred"] / 100
+    df["me_lag"] = 1.0
+    df.loc[df["pred"] == 20, "me_lag"] = 3.0  # biggest firm in the top decile
+    ls = decile_long_short(df, "pred").loc[200001]
+    assert ls["ew"] == pytest.approx((0.19 + 0.20) / 2 - (0.01 + 0.02) / 2)  # 0.18
+    assert ls["vw"] == pytest.approx((0.19 * 1 + 0.20 * 3) / 4 - 0.015)  # 0.1825
+
+
+def test_months_with_fewer_than_ten_stocks_are_skipped():
+    from gkx.metrics import decile_long_short
+
+    df = pd.DataFrame(
+        {"yyyymm": 200001, "permno": range(9), "pred": np.arange(9.0), "target": 0.0, "me_lag": 1.0}
+    )
+    assert decile_long_short(df, "pred").empty
+
+
+def test_annualized_sharpe_hand_example():
+    from gkx.metrics import sharpe
+
+    # mean 0.02, sample sd 0.0141421 -> monthly 1.41421 -> × √12
+    assert sharpe(pd.Series([0.01, 0.03])) == pytest.approx(np.sqrt(2) * np.sqrt(12))
