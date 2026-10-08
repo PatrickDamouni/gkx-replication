@@ -118,3 +118,21 @@ This file is the interview script.
 - **Fix:** `align` keys rows on the return month (`yyyymm`), keeps `signal_month` as metadata, and
   drops rows whose return month is in the holdout. `evaluate` (seam 5) passes models only an
   explicit feature list, so the label is structurally unreachable.
+
+## D015 — Inference settings fixed before data (2026-10-08)
+- **HAC lag:** Newey–West rule floor(4·(T/100)^(2/9)); T = 360 test months → **5 lags**. Applied to
+  every DM / Clark–West test on monthly series.
+- **Bootstrap:** circular month-block bootstrap, **block length 12**, **B = 10,000**, seed 20261008.
+  Resamples whole months (keeps each cross-section intact); one shared index matrix for every
+  model so CIs on ΔR² and Sharpe are paired.
+- **Test sides:** DM / Clark–West are one-sided (H1: the larger/candidate model has lower MSE),
+  normal p-values. CIs are percentile, 95%.
+- **Sharpe:** monthly mean / monthly sd × √12.
+- **Why now:** each is a forking path if chosen after seeing results.
+
+## D016 — Evidence for D010: DM vs Clark–West size under a nested null (2026-10-08)
+- Simulation (400 reps, 20 firms, big model = small model + fitted noise, true null, nominal 5%):
+  - T = 60 months: DM rejects 0.5%, Clark–West 8.5% (mildly oversized at short T).
+  - **T = 360 months (our test length): DM rejects 0.0%, Clark–West 5.8%** (MC se 1.1%).
+- **Reading:** plain DM would almost never declare a nested model better even when it is; CW is
+  correctly sized at our sample length. Reproduce with the loop in `tests/test_metrics.py`.
