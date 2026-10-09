@@ -52,7 +52,7 @@ def main() -> None:
     j = fast.merge(slow, on=["permno", "yyyymm"], suffixes=("_fast", "_slow"))
     rel = np.abs(j.pred_fast - j.pred_slow).max() / np.abs(j.pred_slow).max()
     print(
-        f"OLS+H fast: {time.time() - t0:.0f}s (slow path was 2378s); "
+        f"OLS+H fast: {time.time() - t0:.0f}s (unconverged slow path was 2378s); "
         f"R² {100 * r2_oos(fast, 'pred'):+.3f}%; max |Δpred| / max |pred| vs slow = {rel:.1e}"
     )
 

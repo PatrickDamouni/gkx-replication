@@ -363,3 +363,13 @@ This file is the interview script.
   X'WX as X'X − Σ_downweighted (1−w) z z' (≈0.1% of rows). Rehearsal folds now converge in 5–9
   iterations, ≤ 1.2 s per fold. Tests: convergence on a rank-deficient design, first-order optimality
   (‖Z'ψ‖ ≤ 1e-8 scale), fast path identical to full rebuild.
+
+## D033 — Rehearsal diagnosis of OLS-all: the explosion is macro-interaction extrapolation (2026-10-09)
+- Rehearsal 1975–1986 (never the test window): OLS with x ⊗ c + dummies R² −27,153%; the same OLS on
+  characteristics + industry dummies only R² −1.58% (most years +0.5% to +1.7%; 1975, trained on 6
+  years, −17%). Fast and slow Huber agree to 8.9e-9 relative.
+- **Reading:** the characteristic pipeline is sound; the explosion is unpenalized macro interactions
+  extrapolating (D031: 1975 macro 3–10 training SDs out of range). GKX's OLS-all is specified exactly
+  this way and is reported as failing (−3.46%).
+- **Decision:** no change to OLS-all's specification to make it look better (no winsorizing or
+  clipping macro). The test-window OLS-all number will be reported as is, with this diagnosis.
