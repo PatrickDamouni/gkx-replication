@@ -34,8 +34,8 @@ def _z(X, mu, sd):
 def data():
     X, y = _panel(0)
     Xv, yv = _panel(1)
-    m = X[MACRO].to_numpy()
-    return X, y, Xv, yv, m.mean(0), m.std(0)
+    # D040: raw macro is the default, so the reference design uses mu = 0, sd = 1
+    return X, y, Xv, yv, np.zeros(len(MACRO)), np.ones(len(MACRO))
 
 
 @pytest.mark.parametrize("lam", [1e-3, 1e-2])

@@ -431,3 +431,20 @@ Reported for every model next to the primary pooled R²; none changes the succes
   tolerance could not be met (same mechanism as D032).
 - **Chose:** outer tolerance 1e-8 (inner KKT stays 1e-10). Rehearsal folds 1975/1980/1986 converge
   in ≤ 4 outer iterations, 1–3 s per fold. Each fold's `converged` flag is logged in the ledger.
+
+## D040 — Raw macro predictors for PCR, PLS, ENet+H and the NNs (reverses D037's scaling rule) (2026-10-09, before any test look)
+- **Finding (council 6 Devil's Advocate; reproduced through the real harness, ledger runs
+  `*-rawmacro-rehearsal` at a clean commit):** with macro standardized (D037), PCR/PLS/ENet+H had zero
+  or negative cross-sectional ranking skill on the 1975–1986 rehearsal (within-month demeaned R²:
+  PCR −0.172%, PLS 0.000%, ENet+H −0.000%; PLS chose K=0 in all 12 folds). With raw macro, as GKX
+  eq. 21 writes x_t: pooled R² PCR +0.760% (K 9–67), PLS +0.728% (K 2–9), ENet+H +0.718%; demeaned
+  R² +0.334%, +0.298%, +0.292%. Chosen K ranges match GKX Fig. 3's axes. Mechanism: centering turns
+  c·m into c·(m − μ), putting the unstable interaction directions (D033) on equal footing with the
+  characteristics, which the penalty and the leading components then cannot tell apart.
+- **Chose:** raw macro for every scale-dependent model (PCR, PLS, ENet+H, NN1–NN3). OLS and OLS+H keep
+  training-window standardization: their predictions are mathematically identical either way (D030;
+  test `test_scale_macro_switch_and_ols_invariance`) and it improves conditioning.
+- **Disclosure:** this reverses a pre-registered rule after seeing rehearsal results — a researcher
+  degree of freedom. Grounds: the paper's text (eq. 21) states raw x_t and never standardizes it;
+  the 1987–2016 test window is untouched; both variants stay in the ledger and the write-up reports
+  the change. The standardized variants are not run on the test window.

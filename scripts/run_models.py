@@ -36,12 +36,6 @@ def main() -> None:
         "PLS": (full, lambda s: PLS(chars, macro, "sic2")),
         "ENet+H": (full, lambda s: ENet(chars, macro, "sic2", loss="huber")),
         "GLM+H": (full, lambda s: GLM(chars, macro, "sic2", loss="huber")),
-        "PCR-rawmacro": (full, lambda s: PCR(chars, macro, "sic2", scale_macro=False)),
-        "PLS-rawmacro": (full, lambda s: PLS(chars, macro, "sic2", scale_macro=False)),
-        "ENet+H-rawmacro": (
-            full,
-            lambda s: ENet(chars, macro, "sic2", loss="huber", scale_macro=False),
-        ),
         "GBRT+H": (full, lambda s: GBRT(chars, macro, "sic2")),
         "RF": (full, lambda s: RF(chars, macro, "sic2")),
     }

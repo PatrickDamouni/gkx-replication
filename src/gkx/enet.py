@@ -34,7 +34,7 @@ class ENet:
         xi: float | None = None,
         kkt_tol: float = 1e-10,
         max_iter: int = 200_000,
-        scale_macro: bool = True,
+        scale_macro: bool = False,  # D040: raw macro, as GKX eq. 21
     ):
         self.lambdas = sorted((float(v) for v in lambdas), reverse=True)
         self.rho, self.loss, self.xi = rho, loss, xi

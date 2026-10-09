@@ -23,7 +23,7 @@ class _Reduction:
         macro_cols: list[str],
         ind_col: str | None = "sic2",
         k_grid: Iterable[int] = range(101),
-        scale_macro: bool = True,
+        scale_macro: bool = False,  # D040: raw macro, as GKX eq. 21
     ):
         self.k_grid = sorted(set(k_grid))
         self.base = LinearGKX(
