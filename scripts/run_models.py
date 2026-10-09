@@ -13,6 +13,7 @@ import pyarrow.parquet as pq
 from gkx.evaluate import LEDGER, evaluate
 from gkx.metrics import r2_oos
 from gkx.panel import load_panel
+from gkx.enet import ENet
 from gkx.reduction import PCR, PLS
 from gkx.walk_forward import walk_forward
 
@@ -31,6 +32,7 @@ def main() -> None:
     specs = {
         "PCR": (full, lambda s: PCR(chars, macro, "sic2")),
         "PLS": (full, lambda s: PLS(chars, macro, "sic2")),
+        "ENet+H": (full, lambda s: ENet(chars, macro, "sic2", loss="huber")),
     }
     for name in sys.argv[1:]:
         features, make = specs[name]
