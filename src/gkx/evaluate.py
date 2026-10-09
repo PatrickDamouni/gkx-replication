@@ -83,6 +83,17 @@ def _sharpes(preds: pd.DataFrame) -> tuple[float | None, float | None]:
     return sharpe(ls["ew"]), sharpe(ls["vw"])
 
 
+def _plain(value):
+    """JSON-safe version of a chosen config (numpy scalars, tuples, dicts)."""
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, dict):
+        return {str(k): _plain(v) for k, v in value.items()}
+    if isinstance(value, tuple | list):
+        return [_plain(v) for v in value]
+    return value
+
+
 def _run_id(name: str, features: list[str]) -> str:
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     return f"{stamp}-{name}-{hashlib.sha1(str(features).encode()).hexdigest()[:6]}"
@@ -143,7 +154,7 @@ def evaluate(
         )
 
     keep = [c for c in ("yyyymm", "permno", "target", "me_lag") if c in panel.columns]
-    parts = []
+    parts, selection = [], []
     for fold in folds:
         train, val, test = (_rows(panel, w) for w in (fold.train, fold.val, fold.test))
         out = test[keep].copy()
@@ -152,6 +163,15 @@ def evaluate(
                 train[features], train["target"], val[features], val["target"]
             )
             out[f"pred_seed{seed}"] = model.predict(test[features])
+            if hasattr(model, "val_scores_"):  # grid points are scored on validation only
+                selection.append(
+                    {
+                        "refit": fold.refit,
+                        "seed": seed,
+                        "chosen": _plain(model.chosen_),
+                        "val_scores": {str(k): float(v) for k, v in model.val_scores_.items()},
+                    }
+                )
         out["pred"] = out[[f"pred_seed{s}" for s in seeds]].mean(axis=1)
         parts.append(out)
     preds = pd.concat(parts, ignore_index=True)
@@ -168,6 +188,8 @@ def evaluate(
             "preds_path": str(rel),
             "preds_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         }
+        if selection:
+            row["selection"] = selection
         if not test_window:  # test-window metrics are computed only in the final step (D027)
             ew, vw = _sharpes(preds)
             row |= {"r2_oos": r2_oos(preds, "pred"), "sharpe_ew": ew, "sharpe_vw": vw}

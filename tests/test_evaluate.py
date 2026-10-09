@@ -220,3 +220,20 @@ def test_test_window_runs_record_no_metrics_until_the_final_step(panel, monkeypa
     finished = _rows(ledger)[-1]
     assert finished["event"] == "finished" and "preds_sha256" in finished
     assert not {"r2_oos", "sharpe_ew", "sharpe_vw"} & finished.keys()
+
+
+def test_selection_details_are_logged_per_fold(panel, tmp_path):
+    """Council 5: every grid point's validation score and the chosen config go to the ledger."""
+
+    class Selects(ZeroModel):
+        def fit(self, X, y, X_val, y_val):
+            self.val_scores_, self.chosen_ = {"a": 0.1, "b": 0.3}, "b"
+            return self
+
+    ledger = tmp_path / "trials.jsonl"
+    evaluate(lambda seed: Selects(), panel, FOLDS[:2], features=["x"], ledger=ledger)
+    finished = _rows(ledger)[-1]
+    assert finished["selection"] == [
+        {"refit": 1975, "seed": 0, "chosen": "b", "val_scores": {"a": 0.1, "b": 0.3}},
+        {"refit": 1976, "seed": 0, "chosen": "b", "val_scores": {"a": 0.1, "b": 0.3}},
+    ]
