@@ -373,3 +373,46 @@ This file is the interview script.
   this way and is reported as failing (−3.46%).
 - **Decision:** no change to OLS-all's specification to make it look better (no winsorizing or
   clipping macro). The test-window OLS-all number will be reported as is, with this diagnosis.
+
+## D034 — Deflated-Sharpe trial count revised: N = model variants whose test Sharpe is reported (2026-10-09, before any test look)
+- **Revises D028** (council 5: Simplicity, Devil's Advocate). Grid points are selected on the
+  validation window and seeds are averaged into the ensemble (D006) — neither is a selection on
+  test results. N = the number of Arm A candidate model variants whose test Sharpe is reported and
+  compared (≈11). Every grid point and seed is still logged (val scores), and the ledger keeps the
+  `counts_as_trial` flag per run.
+
+## D035 — GLM+H kept: quadratic splines on the 94 characteristics, no macro interactions (2026-10-09)
+- **Reading fixed before any test look:** GKX eq. 13 prints a non-truncated basis (spans only
+  {1, z, z²}); we use the evident intent — order-2 splines with 3 knots, truncated (c − k)₊² — on
+  each of the 94 rank-normalized characteristics (knots at fixed rank quantiles −0.5, 0, 0.5), group
+  lasso per characteristic, Huber loss, no macro interactions. Matches GKX Fig. 3's "# of Char."
+  axis and the model's stated role (nonlinearity without interactions). Stated as an interpretation.
+- **Rejected:** dropping GLM (council 5 Simplicity); splines on all 920 z columns.
+
+## D036 — Pre-registered diagnostics (not trials), fixed while blind to 1987–2016 (2026-10-09)
+1. Training-mean benchmark: forecast = the training window's mean excess return (council 5: it
+   alone scores +0.470% on the rehearsal window, ~86% of OLS-3's +0.546%).
+2. Within-month demeaned R²: R² after subtracting each month's mean prediction (pure ranking skill).
+3. Secondary R² excluding return months 1987-11 and 2008-11 (macro inputs far outside training
+   ranges after the Oct-1987 and Oct-2008 crashes).
+Reported for every model next to the primary pooled R²; none changes the success criteria.
+
+## D037 — Procedure rules for Phase 3, fixed before the freeze (council 5, paper text where cited)
+- **No refit after selection:** estimates come from the training window alone; validation only
+  selects (paper lines 376–377).
+- **Selection objective:** validation MSE (equivalently R²) for every model, including +H ones.
+- **Scaling:** macro predictors standardized with training-window constants for every
+  scale-dependent model (OLS/Huber invariant; ENet, PCR, PLS, GLM, NN not). No raw-macro run. No
+  clipping or winsorizing of any input (as D033).
+- **PCR/PLS** on demeaned Z (paper footnote 12), K ∈ {0, 1, …, 100}; all K from one decomposition.
+- **ENet+H** only (Table 1 reports the +H version; D011's squared ENet dropped); λ log grid of 10 on
+  (1e-4, 1e-1), ρ = 0.5, loss mean-scaled by 1/n as in GKX eq. 4. **NN λ₁:** 3-point log grid on
+  (1e-5, 1e-3) — the same reading rule as ENet.
+- **Huber ξ for +H models:** one ξ per fold = 99.9th percentile of |residual| of OLS-all (squared
+  loss) on that fold's training window, shared by OLS+H, ENet+H, GLM+H, GBRT+H and logged.
+- **Trees (LightGBM):** RF and GBRT run once (no seed ensemble); `num_leaves = 2**max_depth`;
+  features per split as `feature_fraction_bynode = k / n_inputs`; RF subsamples without
+  replacement (LightGBM has no bootstrap — stated deviation); bins from training rows only.
+- **NN seeds:** 5 (D029 stands; Performance's 10-seed option declined).
+- **Intercept:** every linear model gets an unpenalized intercept (fix for council 5's finding that
+  rows without sic2 — 17.8% in rehearsal — were predicted at level 0).
