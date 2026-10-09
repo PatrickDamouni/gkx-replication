@@ -42,10 +42,17 @@ def main() -> None:
         "RF-dm": (full, lambda s: RF(chars, macro, "sic2"), "demeaned"),
     }
     for name in sys.argv[1:]:
-        features, make = specs[name]
+        features, make, *arm = specs[name]
+        target = arm[0] if arm else "raw"  # D041/D043 arms
         t0 = time.time()
         preds = evaluate(
-            make, panel, folds, features, name=f"{name}-rehearsal", counts_as_trial=False
+            make,
+            panel,
+            folds,
+            features,
+            name=f"{name}-rehearsal",
+            counts_as_trial=False,
+            target=target,
         )
         rows = [json.loads(line) for line in LEDGER.read_text().splitlines()]
         chosen = [s["chosen"] for s in rows[-1].get("selection", [])]
