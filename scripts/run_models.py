@@ -10,12 +10,13 @@ import time
 
 import pyarrow.parquet as pq
 
+from gkx.enet import ENet
 from gkx.evaluate import LEDGER, evaluate
+from gkx.glm import GLM
 from gkx.metrics import r2_oos
 from gkx.panel import load_panel
-from gkx.enet import ENet
-from gkx.glm import GLM
 from gkx.reduction import PCR, PLS
+from gkx.trees import GBRT, RF
 from gkx.walk_forward import walk_forward
 
 PANEL = "data/processed/panel_datashare.parquet"
@@ -35,6 +36,8 @@ def main() -> None:
         "PLS": (full, lambda s: PLS(chars, macro, "sic2")),
         "ENet+H": (full, lambda s: ENet(chars, macro, "sic2", loss="huber")),
         "GLM+H": (full, lambda s: GLM(chars, macro, "sic2", loss="huber")),
+        "GBRT+H": (full, lambda s: GBRT(chars, macro, "sic2")),
+        "RF": (full, lambda s: RF(chars, macro, "sic2")),
     }
     for name in sys.argv[1:]:
         features, make = specs[name]
