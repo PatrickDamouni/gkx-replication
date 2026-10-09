@@ -94,6 +94,31 @@ def _plain(value):
     return value
 
 
+def _now() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+def _sha(path: Path) -> str | None:
+    return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
+
+
+def _unfinished(ledger: Path, resume_key: str) -> tuple[str, dict] | None:
+    """Latest run with this resume key that never finished, and its checkpointed folds."""
+    if not ledger.exists():
+        return None
+    rows = [json.loads(line) for line in ledger.read_text().splitlines() if line.strip()]
+    runs = [
+        r["run_id"] for r in rows if r["event"] == "started" and r.get("resume_key") == resume_key
+    ]
+    if not runs:
+        return None
+    run_id = runs[-1]
+    if any(r["event"] == "finished" and r["run_id"] == run_id for r in rows):
+        return None
+    done = {r["refit"]: r for r in rows if r["event"] == "fold_done" and r["run_id"] == run_id}
+    return run_id, done
+
+
 def _run_id(name: str, features: list[str]) -> str:
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     return f"{stamp}-{name}-{hashlib.sha1(str(features).encode()).hexdigest()[:6]}"
@@ -132,39 +157,58 @@ def evaluate(
         if ledger is None:
             raise TestWindowLocked("test-window runs must be logged to the ledger (D027)")
 
-    run_id = _run_id(name, features)
+    sha = _git_sha()
+    resume_key = hashlib.sha1(
+        json.dumps([name, sha, features, seeds, [f.refit for f in folds]]).encode()
+    ).hexdigest()
+    run_id, done = _run_id(name, features), {}
     if ledger is not None:
         ledger = Path(ledger)
         ledger.parent.mkdir(parents=True, exist_ok=True)
-        _append(
-            ledger,
-            {
-                "event": "started",
-                "run_id": run_id,
-                "timestamp": datetime.now(UTC).isoformat(timespec="seconds"),
-                "git_sha": _git_sha(),
-                "git_dirty": dirty,
-                "name": name,
-                "features": features,
-                "seeds": seeds,
-                "folds": [f.refit for f in folds],
-                "test_window": test_window,
-                "counts_as_trial": counts_as_trial,
-            },
-        )
+        previous = _unfinished(ledger, resume_key)
+        if previous is not None:  # same code, inputs and folds: resume, don't start a new look
+            run_id, done = previous
+            _append(ledger, {"event": "resumed", "run_id": run_id, "timestamp": _now()})
+        else:
+            _append(
+                ledger,
+                {
+                    "event": "started",
+                    "run_id": run_id,
+                    "resume_key": resume_key,
+                    "timestamp": _now(),
+                    "git_sha": sha,
+                    "git_dirty": dirty,
+                    "name": name,
+                    "features": features,
+                    "seeds": seeds,
+                    "folds": [f.refit for f in folds],
+                    "test_window": test_window,
+                    "counts_as_trial": counts_as_trial,
+                },
+            )
 
     keep = [c for c in ("yyyymm", "permno", "target", "me_lag") if c in panel.columns]
     parts, selection = [], []
     for fold in folds:
+        cached = done.get(fold.refit)
+        if (
+            cached is not None
+            and _sha(ledger.parent / cached["fold_path"]) == cached["fold_sha256"]
+        ):
+            parts.append(pd.read_parquet(ledger.parent / cached["fold_path"]))
+            selection += cached.get("selection", [])
+            continue
         train, val, test = (_rows(panel, w) for w in (fold.train, fold.val, fold.test))
         out = test[keep].copy()
+        fold_selection = []
         for seed in seeds:
             model = make_model(seed).fit(
                 train[features], train["target"], val[features], val["target"]
             )
             out[f"pred_seed{seed}"] = model.predict(test[features])
             if hasattr(model, "val_scores_"):  # grid points are scored on validation only
-                selection.append(
+                fold_selection.append(
                     {
                         "refit": fold.refit,
                         "seed": seed,
@@ -179,6 +223,23 @@ def evaluate(
                 )
         out["pred"] = out[[f"pred_seed{s}" for s in seeds]].mean(axis=1)
         parts.append(out)
+        selection += fold_selection
+        if ledger is not None:  # checkpoint: a crash later never loses this fold
+            rel = Path("preds") / run_id / f"fold_{fold.refit}.parquet"
+            (ledger.parent / rel).parent.mkdir(parents=True, exist_ok=True)
+            out.to_parquet(ledger.parent / rel, compression="zstd", index=False)
+            _append(
+                ledger,
+                {
+                    "event": "fold_done",
+                    "run_id": run_id,
+                    "refit": fold.refit,
+                    "timestamp": _now(),
+                    "fold_path": str(rel),
+                    "fold_sha256": _sha(ledger.parent / rel),
+                }
+                | ({"selection": fold_selection} if fold_selection else {}),
+            )
     preds = pd.concat(parts, ignore_index=True)
 
     if ledger is not None:
@@ -189,9 +250,9 @@ def evaluate(
         row = {
             "event": "finished",
             "run_id": run_id,
-            "timestamp": datetime.now(UTC).isoformat(timespec="seconds"),
+            "timestamp": _now(),
             "preds_path": str(rel),
-            "preds_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "preds_sha256": _sha(path),
         }
         if selection:
             row["selection"] = selection

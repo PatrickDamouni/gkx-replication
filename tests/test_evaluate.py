@@ -6,6 +6,7 @@ All tests use the 1975–1986 rehearsal schedule; the real 1987–2016 window is
 
 import hashlib
 import json
+from typing import ClassVar
 
 import numpy as np
 import pandas as pd
@@ -175,7 +176,9 @@ def test_finished_row_records_metrics_trial_flag_and_a_hashed_predictions_file(p
         ledger=ledger,
         counts_as_trial=True,
     )
-    started, finished = _rows(ledger)
+    rows = _rows(ledger)
+    started, finished = rows[0], rows[-1]
+    assert [r["event"] for r in rows[1:-1]] == ["fold_done"] * len(FOLDS)  # per-fold checkpoints
     assert started["run_id"] == finished["run_id"] and finished["event"] == "finished"
     assert {"git_sha", "git_dirty", "counts_as_trial", "test_window"} <= started.keys()
     assert started["counts_as_trial"] is True
@@ -237,3 +240,75 @@ def test_selection_details_are_logged_per_fold(panel, tmp_path):
         {"refit": 1975, "seed": 0, "chosen": "b", "val_scores": {"a": 0.1, "b": 0.3}},
         {"refit": 1976, "seed": 0, "chosen": "b", "val_scores": {"a": 0.1, "b": 0.3}},
     ]
+
+
+# --- per-fold checkpoints and resume (council 6 Performance) ---------------------------------
+
+
+class CrashOnce(ZeroModel):
+    """Fails on the first fit of the given fold, then behaves; counts fits per process."""
+
+    fits: ClassVar[list[int]] = []
+    crashed = False
+
+    def __init__(self, crash_at: int):
+        self.crash_at = crash_at
+
+    def fit(self, X, y, X_val, y_val):
+        refit = int(X_val.index.max())  # identifies the fold within this test's fixture
+        CrashOnce.fits.append(refit)
+        if refit == self.crash_at and not CrashOnce.crashed:
+            CrashOnce.crashed = True
+            raise RuntimeError("simulated crash")
+        return self
+
+
+def test_a_crashed_run_resumes_under_the_same_run_id_and_skips_finished_folds(panel, tmp_path):
+    ledger = tmp_path / "trials.jsonl"
+    folds = FOLDS[:3]
+    third_fold_val_max = int(panel.index[panel["yyyymm"].between(*folds[2].val)].max())
+    CrashOnce.fits, CrashOnce.crashed = [], False
+    with pytest.raises(RuntimeError):
+        evaluate(lambda s: CrashOnce(third_fold_val_max), panel, folds, ["x"], ledger=ledger)
+    fits_before = len(CrashOnce.fits)
+    preds = evaluate(lambda s: CrashOnce(third_fold_val_max), panel, folds, ["x"], ledger=ledger)
+    assert len(CrashOnce.fits) - fits_before == 1  # only the crashed third fold is refit
+    events = [(r["event"], r.get("refit")) for r in _rows(ledger)]
+    assert events == [
+        ("started", None),
+        ("fold_done", 1975),
+        ("fold_done", 1976),
+        ("resumed", None),
+        ("fold_done", 1977),
+        ("finished", None),
+    ]
+    assert len({r["run_id"] for r in _rows(ledger)}) == 1
+    clean = evaluate(lambda s: ZeroModel(), panel, folds, ["x"], ledger=None)
+    pd.testing.assert_frame_equal(preds, clean)
+
+
+def test_a_tampered_fold_file_is_not_trusted_on_resume(panel, tmp_path):
+    ledger = tmp_path / "trials.jsonl"
+    folds = FOLDS[:2]
+    second_val_max = int(panel.index[panel["yyyymm"].between(*folds[1].val)].max())
+    CrashOnce.fits, CrashOnce.crashed = [], False
+    with pytest.raises(RuntimeError):
+        evaluate(lambda s: CrashOnce(second_val_max), panel, folds, ["x"], ledger=ledger)
+    fold_file = tmp_path / _rows(ledger)[1]["fold_path"]
+    fold_file.write_bytes(fold_file.read_bytes() + b"tampered")
+    before = len(CrashOnce.fits)
+    evaluate(lambda s: CrashOnce(second_val_max), panel, folds, ["x"], ledger=ledger)
+    assert len(CrashOnce.fits) - before == 2  # both folds refit: the first file failed its hash
+
+
+def test_a_different_git_commit_starts_a_new_run_instead_of_resuming(panel, tmp_path, monkeypatch):
+    ledger = tmp_path / "trials.jsonl"
+    folds = FOLDS[:2]
+    second_val_max = int(panel.index[panel["yyyymm"].between(*folds[1].val)].max())
+    CrashOnce.fits, CrashOnce.crashed = [], False
+    with pytest.raises(RuntimeError):
+        evaluate(lambda s: CrashOnce(second_val_max), panel, folds, ["x"], ledger=ledger)
+    monkeypatch.setattr(ev, "_git_sha", lambda: "deadbee")
+    evaluate(lambda s: ZeroModel(), panel, folds, ["x"], ledger=ledger)
+    assert [r["event"] for r in _rows(ledger)].count("started") == 2
+    assert "resumed" not in [r["event"] for r in _rows(ledger)]
