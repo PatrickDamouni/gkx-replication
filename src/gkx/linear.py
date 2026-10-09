@@ -44,6 +44,7 @@ class LinearGKX:
             max_iter,
             tol,
         )
+        self.fast_irls = True  # Huber: X'WX = X'X − Σ_out (1−w) z z'  (only downweighted rows)
 
     # --- layout ---------------------------------------------------------------------------
     def _groups(self, X: pd.DataFrame):
@@ -64,7 +65,26 @@ class LinearGKX:
         return pd.Categorical(X[self.ind_col], categories=self.industries_).codes  # unseen → -1
 
     # --- normal equations -----------------------------------------------------------------
+    def _design_rows(self, X: pd.DataFrame) -> np.ndarray:
+        """Materialize z for a small set of rows (the Huber-downweighted ones)."""
+        C = X[self.char_cols].to_numpy(dtype=float)
+        if self.macro_cols:
+            m = (X[self.macro_cols].to_numpy(dtype=float) - self.mu_) / self.sd_
+            x = np.column_stack([np.ones(len(X)), m])
+        else:
+            x = np.ones((len(X), 1))
+        parts = [np.einsum("ij,ik->ijk", x, C).reshape(len(X), -1)]
+        if self.industries_:
+            ind = self._ind_codes(X)
+            D = np.zeros((len(X), len(self.industries_)))
+            D[np.flatnonzero(ind >= 0), ind[ind >= 0]] = 1.0
+            parts.append(D)
+        if self.intercept:
+            parts.append(np.ones((len(X), 1)))
+        return np.column_stack(parts)
+
     def _normal_equations(self, X, y, w):
+        self.full_builds_ = getattr(self, "full_builds_", 0) + 1
         C = X[self.char_cols].to_numpy(dtype=float)
         ind = self._ind_codes(X)
         pc, pk, pd_ = len(self.char_cols), 1 + len(self.macro_cols), len(self.industries_)
@@ -112,10 +132,10 @@ class LinearGKX:
             sorted(X[self.ind_col].dropna().unique()) if self.ind_col is not None else []
         )
         yy = y.to_numpy(dtype=float)
-        w = np.ones(len(yy))
-        A, b = self._normal_equations(X, yy, w)
-        self.coef_ = self._solve(A, b)
-        self.cond_ = float(np.linalg.cond(A))
+        self.full_builds_ = 0
+        A0, b0 = self._normal_equations(X, yy, np.ones(len(yy)))
+        self.coef_ = self._solve(A0, b0)
+        self.cond_ = float(np.linalg.cond(A0))
         if self.loss == "l2":
             return self
         if self.xi is None:
@@ -125,7 +145,16 @@ class LinearGKX:
             self.n_iter_ = it
             a = np.abs(yy - self.predict(X))
             w = np.where(a <= self.xi, 1.0, self.xi / np.maximum(a, 1e-300))
-            A, b = self._normal_equations(X, yy, w)
+            if self.fast_irls and not (w < 1.0).any():
+                A, b = A0, b0
+            elif self.fast_irls:
+                out = np.flatnonzero(w < 1.0)
+                Z = self._design_rows(X.iloc[out])
+                shrink = 1.0 - w[out]
+                A = A0 - Z.T @ (Z * shrink[:, None])
+                b = b0 - Z.T @ (shrink * yy[out])
+            else:
+                A, b = self._normal_equations(X, yy, w)
             new = self._solve(A, b)
             done = np.max(np.abs(new - self.coef_)) <= self.tol * (1 + np.max(np.abs(new)))
             self.coef_ = new

@@ -121,3 +121,15 @@ def test_minimum_norm_solution_matches_pinv_on_the_materialized_design():
     theta = np.linalg.pinv(_design(X, intercept=False, industries=[10, 20, 30])) @ y.to_numpy()
     expected = _design(Xt, intercept=False, industries=[10, 20, 30]) @ theta
     np.testing.assert_allclose(_model().fit(X, y, X, y).predict(Xt), expected, atol=1e-9)
+
+
+def test_fast_huber_update_matches_rebuilding_the_full_weighted_normal_equations():
+    """IRLS reuses X'X and subtracts only the downweighted rows' correction (council 4)."""
+    X, y = _panel()
+    fast = _model(loss="huber", xi=0.12).fit(X, y, X, y)
+    slow = _model(loss="huber", xi=0.12)
+    slow.fast_irls = False
+    slow.fit(X, y, X, y)
+    np.testing.assert_allclose(fast.predict(X), slow.predict(X), atol=1e-10)
+    assert fast.n_iter_ == slow.n_iter_
+    assert fast.full_builds_ == 1 and slow.full_builds_ == slow.n_iter_ + 1
