@@ -416,3 +416,8 @@ Reported for every model next to the primary pooled R²; none changes the succes
 - **NN seeds:** 5 (D029 stands; Performance's 10-seed option declined).
 - **Intercept:** every linear model gets an unpenalized intercept (fix for council 5's finding that
   rows without sic2 — 17.8% in rehearsal — were predicted at level 0).
+
+## D038 — Model libraries pinned (2026-10-09)
+- lightgbm 4.7.0 (needs Homebrew `libomp` on macOS — installed), torch 2.14.1 (CPU, 8 threads by
+  default). Exact versions are in `uv.lock`. Thread counts and determinism flags are fixed in the
+  Phase 3 freeze, not now.
