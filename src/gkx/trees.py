@@ -118,12 +118,10 @@ class GBRT(_LGBM):
             for lr in self.rates
         ]
 
-    def _best_iteration(self, booster, Fv, yv, rounds):
-        """Number of trees chosen on validation MSE over the full path (no patience rule)."""
-        sse = [
-            ((yv - booster.predict(Fv, num_iteration=k)) ** 2).sum() for k in range(1, rounds + 1)
-        ]
-        return int(np.argmin(sse)) + 1
+    def _best_iteration(self, val_mse, rounds):
+        """Number of trees chosen on validation MSE over the full path (no patience rule); the
+        per-iteration MSE is recorded by LightGBM during training (metric l2), not re-predicted."""
+        return int(np.argmin(val_mse)) + 1
 
 
 class RF(_LGBM):
