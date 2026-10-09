@@ -81,3 +81,12 @@ def test_lambda_is_chosen_on_validation_and_every_value_is_recorded(data):
     r2 = 1 - ((yv - pv) ** 2).sum() / (yv**2).sum()
     assert model.val_scores_[model.chosen_] == pytest.approx(r2, abs=1e-8)
     assert model.converged_
+
+
+def test_enet_xi_equals_the_shared_fold_rule(data):
+    """D037: every +H model uses the same ξ; ENet computes it from its own statistics."""
+    from gkx.linear import fold_xi
+
+    X, y, Xv, yv, *_ = data
+    m = ENet(CHARS, MACRO, ind_col=None, lambdas=[1e-2], loss="huber").fit(X, y, Xv, yv)
+    assert m.xi == pytest.approx(fold_xi(X, y, CHARS, MACRO, ind_col=None), rel=1e-10)

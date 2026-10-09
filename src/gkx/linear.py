@@ -185,3 +185,9 @@ class LinearGKX:
         if self.intercept:
             out += self.coef_[-1]
         return out
+
+
+def fold_xi(X: pd.DataFrame, y: pd.Series, char_cols, macro_cols, ind_col="sic2") -> float:
+    """D037: one ξ per fold = 99.9th pct of |OLS-all residual| on the training window, shared by
+    every +H model (single implementation so the rule cannot drift between models)."""
+    return huber_threshold(LinearGKX(char_cols, macro_cols, ind_col).fit(X, y), X, y)

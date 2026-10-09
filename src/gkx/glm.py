@@ -15,7 +15,7 @@ from collections.abc import Iterable
 import numpy as np
 import pandas as pd
 
-from gkx.linear import LinearGKX, huber_threshold
+from gkx.linear import fold_xi
 
 KNOTS = (-0.5, 0.0, 0.5)
 PER_CHAR = 1 + len(KNOTS)
@@ -103,8 +103,7 @@ class GLM:
     # --- public API -------------------------------------------------------------------------
     def fit(self, X: pd.DataFrame, y: pd.Series, X_val: pd.DataFrame, y_val: pd.Series):
         if self.loss == "huber" and self.xi is None:
-            ols = LinearGKX(self.char_cols, self.macro_cols, self.ind_col).fit(X, y)
-            self.xi = huber_threshold(ols, X, y)
+            self.xi = fold_xi(X, y, self.char_cols, self.macro_cols, self.ind_col)
         C = X[self.char_cols].to_numpy(dtype=float)
         yy = y.to_numpy(dtype=float)
         n = len(yy)
