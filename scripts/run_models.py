@@ -44,7 +44,7 @@ def main() -> None:
         chosen = [s["chosen"] for s in rows[-1].get("selection", [])]
         print(
             f"{name:6s} rehearsal: R²_oos {100 * r2_oos(preds, 'pred'):+.3f}%  "
-            f"({time.time() - t0:.0f}s)  chosen K by fold: {chosen}",
+            f"({time.time() - t0:.0f}s)  chosen by fold: {chosen}",
             flush=True,
         )
 
