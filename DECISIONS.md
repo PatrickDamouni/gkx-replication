@@ -448,3 +448,38 @@ Reported for every model next to the primary pooled R²; none changes the succes
   degree of freedom. Grounds: the paper's text (eq. 21) states raw x_t and never standardizes it;
   the 1987–2016 test window is untouched; both variants stay in the ledger and the write-up reports
   the change. The standardized variants are not run on the test window.
+
+## D041 — Trees: two pre-registered arms for the market level (2026-10-10, before any test look)
+- **Finding (council 7; verified by the main session on rehearsal folds 1986 and 1980):** with the raw
+  target, validation MSE is dominated by the monthly market level, which characteristics cannot
+  predict; rank-normalized ties and median-filled not-yet-available characteristics carry era
+  stamps that trees use to fit month means, so selection collapses GBRT to 1 tree (fold 1986: test
+  demeaned R² −0.001%, rank IC −0.026; fold 1980: −0.018%, −0.001) or keeps anti-ranking trees.
+  Trained on the within-month demeaned target: 978 / 662 trees, test demeaned R² +0.397% / +0.211%,
+  rank IC +0.094 / +0.030. Linear models are immune (a linear function of ranked characteristics has
+  ~zero cross-sectional mean each month).
+- **Arm 1 — faithful (GKX):** raw target, selection on raw validation MSE, plus a constant fallback:
+  if no configuration beats the training-mean forecast on validation, the model predicts the
+  training mean (recorded as `chosen = "constant"`).
+- **Arm 2 — disclosed deviation:** train and select on the within-month demeaned target (training
+  and validation each demeaned by their own months); prediction = model output + the training-window
+  mean of the raw target. Huber ξ for this arm = 99.9th pct of |OLS-all residual| fit on the demeaned
+  training target.
+- Both arms are reported (and both count under D034 as reported variants). This is the second rule
+  set after rehearsal evidence (after D040); grounds: the mechanism is measured, the test window is
+  untouched, and the faithful arm is kept.
+
+## D042 — Tree inputs: rank-normalized characteristics + sic2, no standalone macro (revises D012)
+- D012's raw macro inputs let trees learn month levels directly (rehearsal mean forecast 2.07% vs a
+  1.29% realized mean) and are unfaithful: GKX's z has no standalone macro feature.
+- **Chose:** 94 rank-normalized characteristics + sic2 (categorical; inert in rehearsal), 95 inputs.
+  Stated as a "characteristics-only trees" deviation. D012's rationale is also corrected: at GBRT's
+  depth 1–2 a stump cannot express a characteristic × macro interaction.
+- **Rejected for the primary run:** full z (847–920 columns): ≈16–29 h and a memory rewrite (council
+  7 Performance), and expected to worsen level-fitting. Optional disclosed robustness run after the
+  freeze only.
+
+## D043 — NN1–NN3 follow the same two-arm rule as the trees, fixed before any NN exists
+- Arm 1 raw target (with the same constant fallback), Arm 2 within-month demeaned target with the
+  training mean added back. Inputs: GKX z with raw macro (D040). Decided now so it is not another
+  post-rehearsal change.
