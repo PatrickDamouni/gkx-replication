@@ -34,12 +34,15 @@ class ENet:
         xi: float | None = None,
         kkt_tol: float = 1e-10,
         max_iter: int = 200_000,
+        scale_macro: bool = True,
     ):
         self.lambdas = sorted((float(v) for v in lambdas), reverse=True)
         self.rho, self.loss, self.xi = rho, loss, xi
         self.kkt_tol, self.max_iter = kkt_tol, max_iter
         self.outer_tol = 1e-8  # above the inner KKT noise floor (~1e-10); D039
-        self.base = LinearGKX(char_cols, macro_cols, ind_col, intercept=True)
+        self.base = LinearGKX(
+            char_cols, macro_cols, ind_col, intercept=True, scale_macro=scale_macro
+        )
 
     # --- inner solver ---------------------------------------------------------------------
     def _fista(self, Q, q, lam, beta, L):
@@ -82,9 +85,7 @@ class ENet:
     # --- public API -----------------------------------------------------------------------
     def fit(self, X: pd.DataFrame, y: pd.Series, X_val: pd.DataFrame, y_val: pd.Series):
         b = self.base
-        m = X[b.macro_cols].to_numpy(dtype=float) if b.macro_cols else np.zeros((len(X), 0))
-        b.mu_, b.sd_ = m.mean(0), np.where(m.std(0) > 0, m.std(0), 1.0)
-        b.industries_ = sorted(X[b.ind_col].dropna().unique()) if b.ind_col is not None else []
+        b._setup(X)
 
         yy = y.to_numpy(dtype=float)
         n = len(yy)

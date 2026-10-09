@@ -23,9 +23,12 @@ class _Reduction:
         macro_cols: list[str],
         ind_col: str | None = "sic2",
         k_grid: Iterable[int] = range(101),
+        scale_macro: bool = True,
     ):
         self.k_grid = sorted(set(k_grid))
-        self.base = LinearGKX(char_cols, macro_cols, ind_col, intercept=True)
+        self.base = LinearGKX(
+            char_cols, macro_cols, ind_col, intercept=True, scale_macro=scale_macro
+        )
 
     # subclasses return {K: θ over the p non-intercept columns}
     def _paths(self, szz: np.ndarray, szy: np.ndarray) -> dict[int, np.ndarray]:
@@ -33,9 +36,7 @@ class _Reduction:
 
     def fit(self, X: pd.DataFrame, y: pd.Series, X_val: pd.DataFrame, y_val: pd.Series):
         b = self.base
-        m = X[b.macro_cols].to_numpy(dtype=float) if b.macro_cols else np.zeros((len(X), 0))
-        b.mu_, b.sd_ = m.mean(0), np.where(m.std(0) > 0, m.std(0), 1.0)
-        b.industries_ = sorted(X[b.ind_col].dropna().unique()) if b.ind_col is not None else []
+        b._setup(X)
 
         yy = y.to_numpy(dtype=float)
         A, bz = b._normal_equations(X, yy, np.ones(len(yy)))

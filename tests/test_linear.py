@@ -158,3 +158,13 @@ def test_linear_models_have_an_intercept_by_default_so_rows_without_sic2_keep_th
     m = LinearGKX(char_cols=CHARS, macro_cols=MACRO, ind_col="sic2").fit(X, y)
     assert m.intercept
     assert m.predict(X).mean() == pytest.approx(y.mean(), abs=1e-10)
+
+
+def test_scale_macro_switch_and_ols_invariance():
+    """Raw vs standardized macro: identical OLS predictions (span unchanged, D030); the switch
+    exists because penalized models and PCR/PLS are NOT invariant (council 6)."""
+    X, y = _panel()
+    raw = LinearGKX(CHARS, MACRO, "sic2", scale_macro=False).fit(X, y)
+    std = LinearGKX(CHARS, MACRO, "sic2", scale_macro=True).fit(X, y)
+    assert (raw.mu_ == 0).all() and (raw.sd_ == 1).all()
+    np.testing.assert_allclose(raw.predict(X), std.predict(X), atol=1e-8)

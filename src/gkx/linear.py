@@ -35,7 +35,9 @@ class LinearGKX:
         xi: float | None = None,
         max_iter: int = 500,
         tol: float = 1e-9,  # relative coefficient change; 1e-12 sat below float64 noise (D032)
+        scale_macro: bool = True,  # D037 rule; see D040 for the raw-macro question
     ):
+        self.scale_macro = scale_macro
         self.char_cols, self.macro_cols, self.ind_col = char_cols, macro_cols, ind_col
         self.intercept, self.loss, self.xi, self.max_iter, self.tol = (
             intercept,
@@ -45,6 +47,17 @@ class LinearGKX:
             tol,
         )
         self.fast_irls = True  # Huber: X'WX = X'X − Σ_out (1−w) z z'  (only downweighted rows)
+
+    def _setup(self, X: pd.DataFrame) -> None:
+        """Training-window constants: macro scaling (or none) and the industry list."""
+        m = X[self.macro_cols].to_numpy(dtype=float) if self.macro_cols else np.zeros((len(X), 0))
+        if self.scale_macro:
+            self.mu_, self.sd_ = m.mean(0), np.where(m.std(0) > 0, m.std(0), 1.0)
+        else:  # raw macro, as GKX eq. 21 writes x_t
+            self.mu_, self.sd_ = np.zeros(m.shape[1]), np.ones(m.shape[1])
+        self.industries_ = (
+            sorted(X[self.ind_col].dropna().unique()) if self.ind_col is not None else []
+        )
 
     # --- layout ---------------------------------------------------------------------------
     def _groups(self, X: pd.DataFrame):
@@ -131,11 +144,7 @@ class LinearGKX:
 
     # --- public API -----------------------------------------------------------------------
     def fit(self, X: pd.DataFrame, y: pd.Series, X_val=None, y_val=None) -> "LinearGKX":
-        m = X[self.macro_cols].to_numpy(dtype=float) if self.macro_cols else np.zeros((len(X), 0))
-        self.mu_, self.sd_ = m.mean(0), np.where(m.std(0) > 0, m.std(0), 1.0)
-        self.industries_ = (
-            sorted(X[self.ind_col].dropna().unique()) if self.ind_col is not None else []
-        )
+        self._setup(X)
         yy = y.to_numpy(dtype=float)
         self.full_builds_ = 0
         A0, b0 = self._normal_equations(X, yy, np.ones(len(yy)))
