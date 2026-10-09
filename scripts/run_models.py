@@ -38,7 +38,8 @@ def main() -> None:
         "GLM+H": (full, lambda s: GLM(chars, macro, "sic2", loss="huber")),
         "GBRT+H": (full, lambda s: GBRT(chars, macro, "sic2")),
         "RF": (full, lambda s: RF(chars, macro, "sic2")),
-        "GBRT+H-nomacro": ([*chars, "sic2"], lambda s: GBRT(chars, [], "sic2")),
+        "GBRT+H-dm": (full, lambda s: GBRT(chars, macro, "sic2"), "demeaned"),
+        "RF-dm": (full, lambda s: RF(chars, macro, "sic2"), "demeaned"),
     }
     for name in sys.argv[1:]:
         features, make = specs[name]

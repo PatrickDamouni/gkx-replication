@@ -312,3 +312,32 @@ def test_a_different_git_commit_starts_a_new_run_instead_of_resuming(panel, tmp_
     evaluate(lambda s: ZeroModel(), panel, folds, ["x"], ledger=ledger)
     assert [r["event"] for r in _rows(ledger)].count("started") == 2
     assert "resumed" not in [r["event"] for r in _rows(ledger)]
+
+
+# --- D041/D043: demeaned-target arm, applied by the harness ------------------------------------
+
+
+class RecordsTargets(ZeroModel):
+    seen: ClassVar[list] = []
+
+    def fit(self, X, y, X_val, y_val):
+        RecordsTargets.seen.append((X.index, y, X_val.index, y_val))
+        return self
+
+
+def test_demeaned_arm_gives_models_zero_mean_targets_per_month_and_adds_the_level_back(panel):
+    RecordsTargets.seen = []
+    preds = evaluate(lambda s: RecordsTargets(), panel, FOLDS[:2], ["x"], target="demeaned")
+    for (idx, y, vidx, yv), fold in zip(RecordsTargets.seen, FOLDS[:2], strict=True):
+        months = panel.loc[idx, "yyyymm"]
+        assert y.groupby(months.to_numpy()).mean().abs().max() < 1e-12
+        assert yv.groupby(panel.loc[vidx, "yyyymm"].to_numpy()).mean().abs().max() < 1e-12
+        raw_mean = panel.loc[panel["yyyymm"].between(*fold.train), "target"].mean()
+        got = preds.loc[preds["yyyymm"].between(*fold.test), "pred"]
+        np.testing.assert_allclose(got, raw_mean)  # ZeroModel output + training-window level
+
+
+def test_target_arm_is_recorded_in_the_ledger(panel, tmp_path):
+    ledger = tmp_path / "trials.jsonl"
+    evaluate(lambda s: ZeroModel(), panel, FOLDS[:1], ["x"], ledger=ledger, target="demeaned")
+    assert _rows(ledger)[0]["target"] == "demeaned"

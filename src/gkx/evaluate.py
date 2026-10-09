@@ -134,8 +134,16 @@ def evaluate(
     ledger: Path | None | str = "default",
     unlock_test: bool = False,
     counts_as_trial: bool = False,
+    target: str = "raw",
 ) -> pd.DataFrame:
-    """Fit on train (+ val for tuning), predict each fold's test year; return stacked predictions."""
+    """Fit on train (+ val for tuning), predict each fold's test year; return stacked predictions.
+
+    target="demeaned" (D041/D043 arm 2): the harness demeans the training and validation targets
+    within their own months, so models never need dates, and adds the training-window mean of the
+    raw target back to the predictions.
+    """
+    if target not in ("raw", "demeaned"):
+        raise ValueError(f"unknown target arm {target!r}")
     seeds = list(seeds)
     ledger = LEDGER if ledger == "default" else ledger
     if "target" in features:
@@ -159,7 +167,7 @@ def evaluate(
 
     sha = _git_sha()
     resume_key = hashlib.sha1(
-        json.dumps([name, sha, features, seeds, [f.refit for f in folds]]).encode()
+        json.dumps([name, sha, features, seeds, [f.refit for f in folds], target]).encode()
     ).hexdigest()
     run_id, done = _run_id(name, features), {}
     if ledger is not None:
@@ -185,6 +193,7 @@ def evaluate(
                     "folds": [f.refit for f in folds],
                     "test_window": test_window,
                     "counts_as_trial": counts_as_trial,
+                    "target": target,
                 },
             )
 
@@ -202,11 +211,14 @@ def evaluate(
         train, val, test = (_rows(panel, w) for w in (fold.train, fold.val, fold.test))
         out = test[keep].copy()
         fold_selection = []
+        y_tr, y_va, level = train["target"], val["target"], 0.0
+        if target == "demeaned":
+            y_tr = y_tr - train.groupby("yyyymm")["target"].transform("mean")
+            y_va = y_va - val.groupby("yyyymm")["target"].transform("mean")
+            level = float(train["target"].mean())
         for seed in seeds:
-            model = make_model(seed).fit(
-                train[features], train["target"], val[features], val["target"]
-            )
-            out[f"pred_seed{seed}"] = model.predict(test[features])
+            model = make_model(seed).fit(train[features], y_tr, val[features], y_va)
+            out[f"pred_seed{seed}"] = model.predict(test[features]) + level
             if hasattr(model, "val_scores_"):  # grid points are scored on validation only
                 fold_selection.append(
                     {
@@ -218,6 +230,11 @@ def evaluate(
                     | (
                         {"converged": bool(model.converged_)}
                         if hasattr(model, "converged_")
+                        else {}
+                    )
+                    | (
+                        {"best_trees": {str(k): int(v) for k, v in model.best_trees_.items()}}
+                        if hasattr(model, "best_trees_")
                         else {}
                     )
                 )

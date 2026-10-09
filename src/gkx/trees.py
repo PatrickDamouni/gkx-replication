@@ -1,7 +1,9 @@
 """GBRT+H and RF with LightGBM (D012, D037).
 
-Inputs: rank-normalized characteristics, macro predictors and sic2 (categorical) — no
-characteristic × macro interactions (trees form interactions through splits; D012).
+Inputs (D042): rank-normalized characteristics + sic2 (categorical). Macro predictors are
+passed in only to compute ξ from OLS-all (D037); they are never split on (standalone macro lets
+trees fit month levels, and GKX's z has no standalone macro). If no configuration beats the
+training-mean forecast on validation, the model predicts that constant (D041 fallback).
 Both run once with fixed seeds and deterministic settings. Selection is by validation MSE
 (`metric="l2"` set explicitly, so a Huber objective never selects on its own metric).
 num_leaves = 2**max_depth so the depth grid is not capped by LightGBM's default of 31 leaves;
@@ -34,8 +36,8 @@ class _LGBM:
         self.char_cols, self.macro_cols, self.ind_col = char_cols, macro_cols, ind_col
 
     def _frame(self, X: pd.DataFrame) -> pd.DataFrame:
-        cols = [*self.char_cols, *self.macro_cols]
-        out = X[cols].astype("float32")
+        """Split inputs: characteristics + sic2 only (D042); macro is used solely for ξ."""
+        out = X[self.char_cols].astype("float32")
         if self.ind_col is not None:
             out[self.ind_col] = pd.Categorical(X[self.ind_col], categories=self.categories_)
         return out
@@ -68,6 +70,9 @@ class _LGBM:
             pv = booster.predict(Fv, num_iteration=best)
             self.params_[key], self.best_trees_[key], self.models_[key] = params, best, booster
             self.val_scores_[key] = float(1 - ((yv - pv) ** 2).sum() / (yv @ yv))
+        # D041 constant fallback: the training-mean forecast competes with every configuration
+        self.constant_ = float(y.mean())
+        self.val_scores_["constant"] = float(1 - ((yv - self.constant_) ** 2).sum() / (yv @ yv))
         self.chosen_ = max(self.val_scores_, key=self.val_scores_.get)
         return self
 
@@ -78,6 +83,8 @@ class _LGBM:
         return rounds
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
+        if self.chosen_ == "constant":
+            return np.full(len(X), self.constant_)
         booster = self.models_[self.chosen_]
         return booster.predict(self._frame(X), num_iteration=self.best_trees_[self.chosen_])
 
