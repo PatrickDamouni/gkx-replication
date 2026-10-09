@@ -351,3 +351,15 @@ This file is the interview script.
 - **Expectation stated before the test look:** rehearsal training windows (6–17 years) are far
   shorter than the test-window ones (≥30 years), so rehearsal OLS-all is not comparable to GKX's
   −3.46%; a large negative OLS-all R² remains expected for genuine reasons (GKX §3.2).
+
+## D032 — Huber IRLS: fixed identified subspace, achievable tolerance, outlier-only updates (2026-10-09)
+- **Finding (rehearsal):** IRLS hit its 500-iteration cap on most folds, so the first OLS+H rehearsal
+  number (−27,038%, 40 min) was not a converged estimate. Two causes: (1) D031's minimum-norm solve
+  re-decided the rank every iteration, so the solution could flip; (2) the 1e-12 relative tolerance
+  sat below float64 noise — on fold 1986 the Huber objective was identical to 15 digits from
+  ~iteration 10 while coefficients kept moving ~1e-13.
+- **Chose:** identify the subspace once from the unweighted X'X (with all weights > 0, X'WX has the
+  same null space — exact, not an approximation); stop at 1e-9 relative coefficient change; update
+  X'WX as X'X − Σ_downweighted (1−w) z z' (≈0.1% of rows). Rehearsal folds now converge in 5–9
+  iterations, ≤ 1.2 s per fold. Tests: convergence on a rank-deficient design, first-order optimality
+  (‖Z'ψ‖ ≤ 1e-8 scale), fast path identical to full rebuild.

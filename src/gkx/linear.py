@@ -34,7 +34,7 @@ class LinearGKX:
         loss: str = "l2",
         xi: float | None = None,
         max_iter: int = 500,
-        tol: float = 1e-12,
+        tol: float = 1e-9,  # relative coefficient change; 1e-12 sat below float64 noise (D032)
     ):
         self.char_cols, self.macro_cols, self.ind_col = char_cols, macro_cols, ind_col
         self.intercept, self.loss, self.xi, self.max_iter, self.tol = (
@@ -113,16 +113,21 @@ class LinearGKX:
         A = np.triu(A) + np.triu(A, 1).T  # fill the lower triangle from the accumulated upper
         return A, b
 
-    def _solve(self, A, b):
-        """Minimum-norm solution of the (possibly singular) normal equations (D031).
+    def _identify(self, A0: np.ndarray) -> None:
+        """Fix the identified subspace from the unweighted X'X (D031).
 
-        Directions with no variation in the training window (e.g. a characteristic not yet
-        available, median-filled to 0) get exactly zero weight instead of arbitrary values.
+        Eigenvalues below EIG_RTOL × max are treated as zero. With every IRLS weight > 0,
+        X'WX has the same null space as X'X, so solving inside this fixed basis keeps the rank
+        constant across iterations (re-deciding it per iteration made IRLS oscillate).
         """
-        vals, vecs = np.linalg.eigh(A)
+        vals, vecs = np.linalg.eigh(A0)
         keep = vals > EIG_RTOL * vals.max()
-        self.rank_ = int(keep.sum())
-        return vecs[:, keep] @ ((vecs[:, keep].T @ b) / vals[keep])
+        self.basis_, self.rank_ = vecs[:, keep], int(keep.sum())
+
+    def _solve(self, A, b):
+        """Minimum-norm solution restricted to the identified subspace."""
+        B = self.basis_
+        return B @ np.linalg.solve(B.T @ A @ B, B.T @ b)
 
     # --- public API -----------------------------------------------------------------------
     def fit(self, X: pd.DataFrame, y: pd.Series, X_val=None, y_val=None) -> "LinearGKX":
@@ -134,16 +139,18 @@ class LinearGKX:
         yy = y.to_numpy(dtype=float)
         self.full_builds_ = 0
         A0, b0 = self._normal_equations(X, yy, np.ones(len(yy)))
+        self._identify(A0)
         self.coef_ = self._solve(A0, b0)
         self.cond_ = float(np.linalg.cond(A0))
         if self.loss == "l2":
             return self
         if self.xi is None:
             self.xi = huber_threshold(self, X, y)
-        self.n_iter_ = 0
+        self.n_iter_, self.converged_ = 0, False
+        groups = list(self._groups(X))  # training groups: computed once, reused every iteration
         for it in range(1, self.max_iter + 1):
             self.n_iter_ = it
-            a = np.abs(yy - self.predict(X))
+            a = np.abs(yy - self.predict(X, groups))
             w = np.where(a <= self.xi, 1.0, self.xi / np.maximum(a, 1e-300))
             if self.fast_irls and not (w < 1.0).any():
                 A, b = A0, b0
@@ -159,16 +166,17 @@ class LinearGKX:
             done = np.max(np.abs(new - self.coef_)) <= self.tol * (1 + np.max(np.abs(new)))
             self.coef_ = new
             if done:
+                self.converged_ = True
                 break
         return self
 
-    def predict(self, X: pd.DataFrame) -> np.ndarray:
+    def predict(self, X: pd.DataFrame, groups=None) -> np.ndarray:
         C = X[self.char_cols].to_numpy(dtype=float)
         pc, pk = len(self.char_cols), 1 + len(self.macro_cols)
         nz = pk * pc
         theta = self.coef_[:nz].reshape(pk, pc)
         out = np.empty(len(X))
-        for x, rows in self._groups(X):
+        for x, rows in groups if groups is not None else self._groups(X):
             out[rows] = C[rows] @ (x @ theta)
         if self.industries_:
             ind = self._ind_codes(X)
