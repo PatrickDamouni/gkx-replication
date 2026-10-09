@@ -38,6 +38,7 @@ class ENet:
         self.lambdas = sorted((float(v) for v in lambdas), reverse=True)
         self.rho, self.loss, self.xi = rho, loss, xi
         self.kkt_tol, self.max_iter = kkt_tol, max_iter
+        self.outer_tol = 1e-8  # above the inner KKT noise floor (~1e-10); D039
         self.base = LinearGKX(char_cols, macro_cols, ind_col, intercept=True)
 
     # --- inner solver ---------------------------------------------------------------------
@@ -64,9 +65,12 @@ class ENet:
             t_new = (1 + np.sqrt(1 + 4 * t * t)) / 2
             yk = x_new + ((t - 1) / t_new) * (x_new - x)
             x, t = x_new, t_new
-            if it % 25 == 0 and self._kkt(grad(x), x, l1) <= self.kkt_tol:
-                return x, True
-        return x, self._kkt(grad(x), x, l1) <= self.kkt_tol
+            if it % 25 == 0:
+                self.last_kkt_, self.last_iter_ = self._kkt(grad(x), x, l1), it
+                if self.last_kkt_ <= self.kkt_tol:
+                    return x, True
+        self.last_kkt_, self.last_iter_ = self._kkt(grad(x), x, l1), self.max_iter
+        return x, self.last_kkt_ <= self.kkt_tol
 
     @staticmethod
     def _kkt(g, b, l1):
@@ -98,11 +102,13 @@ class ENet:
 
         beta = np.zeros(A0.shape[0])
         beta[-1] = yy.mean()
-        self.coefs_, self.val_scores_, self.converged_ = {}, {}, True
+        self.coefs_, self.val_scores_, self.converged_, self.diagnostics_ = {}, {}, True, {}
         for lam in self.lambdas:
+            deltas: list[float] = []
             if self.loss == "l2":
                 beta, ok = self._fista(A0 / n, b0 / n, lam, beta, L)
             else:
+                deltas = []
                 for _ in range(200):  # IRLS outer loop
                     b.coef_ = beta
                     a = np.abs(yy - b.predict(X, groups))
@@ -115,13 +121,22 @@ class ENet:
                         A = A0 - Z.T @ (Z * shrink[:, None])
                         bb = b0 - Z.T @ (shrink * yy[out])
                     new, ok = self._fista(A / n, bb / n, lam, beta, L)
-                    done = np.max(np.abs(new - beta)) <= 1e-10 * (1 + np.max(np.abs(new)))
+                    rel = np.max(np.abs(new - beta)) / (1 + np.max(np.abs(new)))
+                    deltas.append(float(rel))
+                    done = rel <= self.outer_tol
                     beta = new
                     if done:
                         break
                 else:
                     ok = False
             self.converged_ &= ok
+            self.diagnostics_[lam] = {
+                "kkt": self.last_kkt_,
+                "iters": self.last_iter_,
+                "ok": ok,
+                "outer": len(deltas) if self.loss == "huber" else 0,
+                "outer_deltas": deltas[-3:] if self.loss == "huber" else [],
+            }
             sse = yyv - 2 * beta @ bv + beta @ Av @ beta
             self.coefs_[lam], self.val_scores_[lam] = beta.copy(), 1 - sse / yyv
         self.chosen_ = max(self.val_scores_, key=self.val_scores_.get)

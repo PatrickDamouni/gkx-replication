@@ -171,6 +171,11 @@ def evaluate(
                         "chosen": _plain(model.chosen_),
                         "val_scores": {str(k): float(v) for k, v in model.val_scores_.items()},
                     }
+                    | (
+                        {"converged": bool(model.converged_)}
+                        if hasattr(model, "converged_")
+                        else {}
+                    )
                 )
         out["pred"] = out[[f"pred_seed{s}" for s in seeds]].mean(axis=1)
         parts.append(out)

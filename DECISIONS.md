@@ -421,3 +421,13 @@ Reported for every model next to the primary pooled R²; none changes the succes
 - lightgbm 4.7.0 (needs Homebrew `libomp` on macOS — installed), torch 2.14.1 (CPU, 8 threads by
   default). Exact versions are in `uv.lock`. Thread counts and determinism flags are fixed in the
   Phase 3 freeze, not now.
+
+## D039 — ENet+H solver: FISTA with KKT stopping; IRLS outer tolerance above the inner noise floor (2026-10-09)
+- Verified against scikit-learn ElasticNet (squared loss; GKX eq. 8 ↔ sklearn alpha = λ/2,
+  l1_ratio = 1 − ρ) and by the KKT conditions on the materialized design (Huber).
+- **Finding (rehearsal fold 1986):** squared loss converged at every λ (KKT ≤ 1e-10, ≤ 1,450
+  iterations), but Huber reported non-convergence: the IRLS outer loop's relative change plateaued
+  at 1e-10–3e-10 — the noise floor set by the inner solver's 1e-10 KKT tolerance — so a 1e-10 outer
+  tolerance could not be met (same mechanism as D032).
+- **Chose:** outer tolerance 1e-8 (inner KKT stays 1e-10). Rehearsal folds 1975/1980/1986 converge
+  in ≤ 4 outer iterations, 1–3 s per fold. Each fold's `converged` flag is logged in the ledger.
