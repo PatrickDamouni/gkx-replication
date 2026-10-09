@@ -183,3 +183,40 @@ def test_finished_row_records_metrics_trial_flag_and_a_hashed_predictions_file(p
     saved = tmp_path / finished["preds_path"]
     assert hashlib.sha256(saved.read_bytes()).hexdigest() == finished["preds_sha256"]
     assert {"me_lag", "pred", "target"} <= set(pd.read_parquet(saved).columns)
+
+
+# --- council 5 -------------------------------------------------------------------------------
+
+
+def test_ledger_and_results_do_not_count_as_a_dirty_tree(monkeypatch):
+    """The ledger is git-tracked; writing it must not lock the rest of the single test run."""
+    calls = []
+    monkeypatch.setattr(ev, "_git", lambda *args: calls.append(args) or "")
+    ev._git_dirty()
+    assert any(":!results" in " ".join(a) for a in calls)
+
+
+def test_git_failure_fails_closed(monkeypatch):
+    def broken(*args):
+        raise ev.GitUnavailable("not a git repository")
+
+    monkeypatch.setattr(ev, "_git", broken)
+    with pytest.raises(ev.GitUnavailable):
+        ev._git_dirty()
+
+
+def test_test_window_runs_record_no_metrics_until_the_final_step(panel, monkeypatch, tmp_path):
+    """D027 leak (council 5): per-model R² must not be visible while later models still run."""
+    monkeypatch.setattr(ev, "_git_dirty", lambda: False)
+    ledger = tmp_path / "trials.jsonl"
+    evaluate(
+        lambda seed: OracleModel(),
+        panel,
+        TEST_FOLDS,
+        features=["x"],
+        unlock_test=True,
+        ledger=ledger,
+    )
+    finished = _rows(ledger)[-1]
+    assert finished["event"] == "finished" and "preds_sha256" in finished
+    assert not {"r2_oos", "sharpe_ew", "sharpe_vw"} & finished.keys()

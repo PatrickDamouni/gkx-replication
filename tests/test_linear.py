@@ -35,7 +35,10 @@ def _design(X: pd.DataFrame, intercept: bool, industries: list[float]) -> np.nda
 
 
 def _model(loss="l2", xi=None):
-    return LinearGKX(char_cols=CHARS, macro_cols=MACRO, ind_col="sic2", loss=loss, xi=xi)
+    """No intercept here: these tests check the x ⊗ c + dummies algebra against _design()."""
+    return LinearGKX(
+        char_cols=CHARS, macro_cols=MACRO, ind_col="sic2", loss=loss, xi=xi, intercept=False
+    )
 
 
 def test_ols_matches_brute_force_least_squares_on_the_materialized_design():
@@ -145,3 +148,13 @@ def test_huber_irls_converges_on_a_rank_deficient_design():
     Z = _design(X, intercept=False, industries=[10, 20, 30])
     psi = np.clip(y.to_numpy() - m.predict(X), -m.xi, m.xi)
     assert np.abs(Z.T @ psi).max() <= 1e-8 * np.abs(Z.T @ y.to_numpy()).max()
+
+
+def test_linear_models_have_an_intercept_by_default_so_rows_without_sic2_keep_the_level():
+    """Council 5: with no intercept, rows lacking sic2 were predicted at level 0 (D037)."""
+    X, y = _panel()
+    X["sic2"] = np.nan
+    y = y + 0.01
+    m = LinearGKX(char_cols=CHARS, macro_cols=MACRO, ind_col="sic2").fit(X, y)
+    assert m.intercept
+    assert m.predict(X).mean() == pytest.approx(y.mean(), abs=1e-10)

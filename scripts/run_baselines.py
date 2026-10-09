@@ -29,7 +29,7 @@ def main() -> None:
     meta = {"permno", "yyyymm", "signal_month", "target", "me_lag", "shrcd", "sic2", *macro}
     chars = [c for c in names if c not in meta]
     assert len(chars) == 94 and len(macro) == 8, (len(chars), len(macro))
-    panel = load_panel(PANEL)
+    panel = load_panel(PANEL) if test else load_panel(PANEL, end=198612)  # data-layer lock
 
     specs = {
         "OLS-3": (OLS3, lambda s: LinearGKX(OLS3, [], None, intercept=True)),

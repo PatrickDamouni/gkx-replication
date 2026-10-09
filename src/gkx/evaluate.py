@@ -24,7 +24,8 @@ import pandas as pd
 from gkx.metrics import decile_long_short, r2_oos, sharpe
 from gkx.walk_forward import Fold, Window
 
-LEDGER = Path("results/trials.jsonl")
+REPO = Path(__file__).resolve().parents[2]
+LEDGER = REPO / "results" / "trials.jsonl"  # absolute: never depends on the working directory
 TEST_START = 198701  # first month of GKX's test window
 MIN_SEEDS_STOCHASTIC = 5  # D006
 
@@ -33,6 +34,10 @@ class TestWindowLocked(RuntimeError):
     """Raised when code tries to evaluate on 1987-2016 without the D027 unlock."""
 
     __test__ = False  # not a pytest test class despite the name
+
+
+class GitUnavailable(RuntimeError):
+    """git could not be queried; the clean-tree guard must fail closed, not pass."""
 
 
 class Model(Protocol):
@@ -49,7 +54,9 @@ def _rows(panel: pd.DataFrame, w: Window) -> pd.DataFrame:
 
 
 def _git(*args: str) -> str:
-    out = subprocess.run(["git", *args], capture_output=True, text=True, check=False)
+    out = subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True, check=False)
+    if out.returncode != 0:
+        raise GitUnavailable(out.stderr.strip() or f"git {' '.join(args)} failed")
     return out.stdout.strip()
 
 
@@ -58,7 +65,8 @@ def _git_sha() -> str:
 
 
 def _git_dirty() -> bool:
-    return bool(_git("status", "--porcelain"))
+    """Uncommitted changes outside results/ (the ledger itself is written during the run)."""
+    return bool(_git("status", "--porcelain", "--", ".", ":!results"))
 
 
 def _append(ledger: Path, row: dict) -> None:
@@ -153,18 +161,15 @@ def evaluate(
         path = ledger.parent / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         preds.to_parquet(path, compression="zstd", index=False)
-        ew, vw = _sharpes(preds)
-        _append(
-            ledger,
-            {
-                "event": "finished",
-                "run_id": run_id,
-                "timestamp": datetime.now(UTC).isoformat(timespec="seconds"),
-                "r2_oos": r2_oos(preds, "pred"),
-                "sharpe_ew": ew,
-                "sharpe_vw": vw,
-                "preds_path": str(rel),
-                "preds_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-            },
-        )
+        row = {
+            "event": "finished",
+            "run_id": run_id,
+            "timestamp": datetime.now(UTC).isoformat(timespec="seconds"),
+            "preds_path": str(rel),
+            "preds_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        }
+        if not test_window:  # test-window metrics are computed only in the final step (D027)
+            ew, vw = _sharpes(preds)
+            row |= {"r2_oos": r2_oos(preds, "pred"), "sharpe_ew": ew, "sharpe_vw": vw}
+        _append(ledger, row)
     return preds

@@ -30,7 +30,7 @@ class LinearGKX:
         char_cols: list[str],
         macro_cols: list[str],
         ind_col: str | None = None,
-        intercept: bool = False,
+        intercept: bool = True,  # D037: unpenalized intercept in every linear model
         loss: str = "l2",
         xi: float | None = None,
         max_iter: int = 500,
