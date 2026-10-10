@@ -10,3 +10,4 @@ data/processed/*
 .DS_Store
 data/sealed/
 !config/*.csv
+!paper/*.csv
