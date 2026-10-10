@@ -2,12 +2,15 @@
 
 Usage: uv run python scripts/final_report.py [--rehearsal]
 --rehearsal runs the same analysis on the 1975-1986 rehearsal predictions (dry run of this code).
-Test mode refuses unless every model in the frozen list finished on the test window, from one
-clean commit. Output: results/final_report{,_rehearsal}.md and .csv.
+Refuses unless every model in the frozen list finished from one commit with intact prediction
+files; test mode also needs a clean tree whose src/ and scripts/ match that commit. The verdict is
+printed mechanically from D045. Output: results/final_report{,_rehearsal}.md and .csv.
 """
 
 import argparse
+import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -23,7 +26,16 @@ from gkx.metrics import (
     r2_oos,
 )
 from gkx.panel import load_panel
-from gkx.report import CRASH_MONTHS, demeaned_r2, r2_excluding, sharpe_ci, size_masks
+from gkx.report import (
+    CRASH_MONTHS,
+    demeaned_frame,
+    demeaned_r2,
+    holm,
+    r2_excluding,
+    sharpe_ci,
+    size_masks,
+    verdict,
+)
 from gkx.walk_forward import walk_forward
 
 PANEL = "data/processed/panel_datashare.parquet"
@@ -45,15 +57,26 @@ GKX_COLUMN = {
     "NN2": "NN2",
     "NN3": "NN3",
 }
-# PROPOSED pre-specified ranking tests (pending council 8 + user approval before the freeze tag):
-# the prereg ranking NN/trees > penalized linear > OLS-all, on the faithful (raw-target) arm,
-# repeated for the demeaned arm. All non-nested → Diebold–Mariano (D010).
 BASELINES = {"OLS-3", "OLS-3+H", "OLS", "OLS+H"}  # reported, never trials (D028/D034)
-HEADLINE = "NN3"
-PAIRS = [
-    ("NN3", "ENet+H"), ("GBRT+H", "ENet+H"), ("ENet+H", "OLS+H"),
-    ("NN3-dm", "ENet+H"), ("GBRT+H-dm", "ENet+H"),
+HEADLINE = "NN3"  # D045, fixed ex ante
+# D045 confirmatory family, raw arm, Holm at 5%: (candidate, vs, test)
+CONFIRMATORY = [
+    ("NN3", "train_mean", "DM"),
+    ("NN3", "PCR", "DM"), ("NN3", "PLS", "DM"), ("NN3", "ENet+H", "DM"), ("NN3", "GLM+H", "DM"),
+    ("GBRT+H", "ENet+H", "DM"),
+    ("ENet+H", "OLS-3+H", "CW"),
 ]  # fmt: skip
+# D045 secondary, never change the verdict: ranking-only DM for the -dm arms; the can't-lose pair
+SECONDARY = [
+    ("NN3-dm", "ENet+H", "DM-demeaned"), ("GBRT+H-dm", "ENet+H", "DM-demeaned"),
+    ("ENet+H", "OLS+H", "DM"),
+]  # fmt: skip
+PAIRS = CONFIRMATORY + SECONDARY
+ALPHA = 0.05
+
+
+def _git(*args: str) -> str:
+    return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout.strip()
 
 
 def _latest_runs(tag: str) -> dict[str, tuple[dict, dict]]:
@@ -87,21 +110,47 @@ def main() -> None:
     missing = [m for m in MODELS if m not in runs]
     if missing:
         raise SystemExit(f"missing finished {tag} runs: {missing}")
+    runs = {m: runs[m] for m in MODELS}
+    shas = {st["git_sha"] for st, _ in runs.values()}
+    if len(shas) != 1:
+        raise SystemExit(f"{tag} runs must share one commit; shas={shas}")
+    run_sha = shas.pop()
+    head = _git("rev-parse", "HEAD")
     if test:
-        shas = {st["git_sha"] for st, _ in runs.values()}
         dirty = [m for m, (st, _) in runs.items() if st["git_dirty"] or not st["test_window"]]
-        if len(shas) != 1 or dirty:
-            raise SystemExit(f"test runs must share one clean commit; shas={shas} dirty={dirty}")
+        code_changed = _git("diff", "--name-only", run_sha, "HEAD", "--", "src", "scripts")
+        if dirty or code_changed or _git("status", "--porcelain", "--", ".", ":!results"):
+            raise SystemExit(f"refused: dirty runs {dirty} / code changed {code_changed!r} / tree")
+    for m, (_, fin) in runs.items():
+        path = LEDGER.parent / fin["preds_path"]
+        if hashlib.sha256(path.read_bytes()).hexdigest() != fin["preds_sha256"]:
+            raise SystemExit(f"{m}: {path} does not match its logged sha256")
 
     folds = walk_forward() if test else walk_forward(first_test_year=1975, last_test_year=1986)
     panel = load_panel(PANEL) if test else load_panel(PANEL, end=198612)
     keys = ["yyyymm", "permno"]
     preds = {m: pd.read_parquet(LEDGER.parent / runs[m][1]["preds_path"]) for m in MODELS}
     base = preds[MODELS[0]][[*keys, "target", "me_lag"]].copy()
+    seed_rows = []
     for m in MODELS:
         p = preds[m]
         assert len(p) == len(base) and (p[keys].to_numpy() == base[keys].to_numpy()).all(), m
         base[m] = p["pred"].to_numpy()
+        seed_cols = [c for c in p.columns if c.startswith("pred_seed")]
+        if len(seed_cols) > 1:  # D006b: mean ± spread across seeds, never the best seed
+            r2s = [r2_oos(p, c) for c in seed_cols]
+            seed_rows.append(
+                {
+                    "model": m,
+                    "seeds": len(r2s),
+                    "seed R2 mean %": 100 * np.mean(r2s),
+                    "seed R2 sd %": 100 * np.std(r2s, ddof=1),
+                    "seed R2 min %": 100 * min(r2s),
+                    "seed R2 max %": 100 * max(r2s),
+                    "ensemble R2 %": 100 * r2_oos(p, "pred"),
+                }
+            )
+    del preds
     base["zero"] = 0.0
     base["train_mean"] = _training_mean(base, panel, folds).to_numpy()
     top, bottom = size_masks(base)
@@ -114,10 +163,12 @@ def main() -> None:
         ew, vw = (sharpe_ci(ls[c]) if len(ls) > 1 else (np.nan,) * 3 for c in ("ew", "vw"))
         cw_t, cw_p = clark_west(base, small="zero", big=m)
         sr_monthly[m] = ls["vw"].mean() / ls["vw"].std(ddof=1) if len(ls) > 1 else np.nan
+        _, r2_lo, r2_hi = paired_r2_ci(base, "zero", m)
         rows.append(
             {
                 "model": m,
                 "R2 %": 100 * r2_oos(base, m),
+                "R2 95% CI": f"[{100 * r2_lo:.3f}, {100 * r2_hi:.3f}]",
                 "R2 top1000 %": 100 * r2_oos(base[top], m),
                 "R2 bottom1000 %": 100 * r2_oos(base[bottom], m),
                 "demeaned R2 %": 100 * demeaned_r2(base, m),
@@ -155,21 +206,48 @@ def main() -> None:
         )
     table["DSR (VW)"] = table["model"].map(dsr)
 
+    fallback = []
+    for m in MODELS:
+        sel = runs[m][1].get("selection", [])
+        if sel:
+            n = sum(s["chosen"] == "constant" for s in sel)
+            fallback.append({"model": m, "constant fallback": f"{n} / {len(sel)} fold-seeds"})
+
     pair_rows = []
-    for a, b in PAIRS:
-        t, p = diebold_mariano(base, base=b, candidate=a)
+    for a, b, kind in PAIRS:
+        if kind == "CW":
+            t, p = clark_west(base, small=b, big=a)
+        elif kind == "DM-demeaned":
+            t, p = diebold_mariano(demeaned_frame(base, [a, b]), base=b, candidate=a)
+        else:
+            t, p = diebold_mariano(base, base=b, candidate=a)
         d, lo, hi = paired_r2_ci(base, b, a)
         pair_rows.append(
             {
                 "candidate": a,
                 "vs": b,
-                "DM t": t,
-                "DM p (one-sided)": p,
+                "test": kind,
+                "role": "confirmatory" if (a, b, kind) in CONFIRMATORY else "secondary",
+                "t": t,
+                "p (one-sided)": p,
                 "ΔR2 %": 100 * d,
                 "95% CI": f"[{100 * lo:.3f}, {100 * hi:.3f}]",
             }
         )
     pairs = pd.DataFrame(pair_rows)
+    conf = pairs["role"] == "confirmatory"
+    rejected = holm(pairs.loc[conf, "p (one-sided)"].tolist(), ALPHA)
+    pairs["Holm reject"] = ""
+    pairs.loc[conf, "Holm reject"] = ["yes" if r else "no" for r in rejected]
+    primary, primary_lo, primary_hi = paired_r2_ci(base, "zero", HEADLINE)
+    result = verdict(primary_lo, rejected)
+    verdict_text = (
+        f"**Verdict (D045, computed mechanically): {result}.** Primary: {HEADLINE} R²_oos "
+        f"{100 * primary:.3f}%, 95% CI [{100 * primary_lo:.3f}, {100 * primary_hi:.3f}] "
+        f"({'excludes' if primary_lo > 0 else 'does not exclude'} zero). Confirmatory family: "
+        f"{sum(rejected)} of {len(rejected)} rejected under Holm "
+        f"at α = {ALPHA}."
+    )
 
     gkx = pd.read_csv("paper/gkx_table1.csv").set_index("sample")
     comp = pd.DataFrame(
@@ -189,20 +267,28 @@ def main() -> None:
 
     suffix = "" if test else "_rehearsal"
     out = Path(f"results/final_report{suffix}.md")
-    sha = next(iter(runs.values()))[0]["git_sha"]
     out.write_text(
-        f"# Final report ({tag})\n\nCommit `{sha}`. All numbers computed by `scripts/final_report.py`"
-        f" after every prediction existed. Headline model (fixed before the look): **{HEADLINE}**.\n\n"
-        "## Per model\n\n"
-        + table.round(4).to_markdown(index=False)
-        + "\n\n## Pre-specified ranking tests (Diebold–Mariano, paired ΔR² block bootstrap)\n\n"
+        f"# Final report ({tag})\n\nPredictions from commit `{run_sha}`; analysis run at `{head}`."
+        " All numbers computed by `scripts/final_report.py` after every prediction existed."
+        f" Headline model (fixed before the look, D045): **{HEADLINE}**.\n\n"
+        + verdict_text
+        + "\n\n## Pre-specified tests (D045; one-sided p; ΔR² with month-block bootstrap CI)\n\n"
         + pairs.round(4).to_markdown(index=False)
+        + "\n\n## Per model\n\n"
+        + table.round(4).to_markdown(index=False)
+        + "\n\n## Seed spread (D006b; the reported model is the 5-seed ensemble)\n\n"
+        + pd.DataFrame(seed_rows).round(4).to_markdown(index=False)
+        + "\n\n## Constant-fallback selections (D041)\n\n"
+        + pd.DataFrame(fallback).to_markdown(index=False)
         + "\n\n## Against GKX Table 1 (monthly R²_oos, %)\n\n"
         + comp.round(3).to_markdown(index=False)
-        + f"\n\nDSR: N = {len(candidates)} reported candidate variants (D034), VW decile spreads.\n"
+        + f"\n\nDSR: N = {len(candidates)} reported candidate variants (D034), VW decile spreads;"
+        " it ignores variants abandoned in rehearsal and treats correlated variants as independent"
+        " (D045).\n"
     )
     table.to_csv(f"results/final_report{suffix}.csv", index=False)
-    print(f"wrote {out}")
+    pairs.to_csv(f"results/final_report_tests{suffix}.csv", index=False)
+    print(f"wrote {out}\n{verdict_text}")
 
 
 if __name__ == "__main__":

@@ -40,3 +40,30 @@ def sharpe_ci(
     sr = boot.mean(1) / boot.std(1, ddof=1) * np.sqrt(12)
     lo, hi = np.percentile(sr, [2.5, 97.5])
     return sharpe(monthly), float(lo), float(hi)
+
+
+def holm(pvalues: list[float], alpha: float = 0.05) -> list[bool]:
+    """Holm step-down: reject the k-th smallest p while p ≤ α / (m − k + 1) (D045)."""
+    order = np.argsort(pvalues, kind="stable")
+    reject = [False] * len(pvalues)
+    for k, i in enumerate(order):
+        if pvalues[i] > alpha / (len(pvalues) - k):
+            break
+        reject[i] = True
+    return reject
+
+
+def demeaned_frame(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+    """Copy with each month's mean removed from the target and from `cols` (ranking-only DM, D045)."""
+    out = df[["yyyymm", "target", *cols]].copy()
+    month = out.groupby("yyyymm")
+    for c in ["target", *cols]:
+        out[c] = out[c] - month[c].transform("mean")
+    return out
+
+
+def verdict(primary_lo: float, rejected: list[bool]) -> str:
+    """D045: the primary CI must exclude zero; then all confirmatory rejections → replicates."""
+    if primary_lo <= 0:
+        return "does not replicate"
+    return "replicates" if all(rejected) else "partially replicates"

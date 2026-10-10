@@ -48,3 +48,36 @@ def test_sharpe_ci_brackets_the_point_estimate_and_is_reproducible():
     point, lo, hi = sharpe_ci(s, n_boot=2000)
     assert lo < point < hi
     assert sharpe_ci(s, n_boot=2000) == (point, lo, hi)
+
+
+# --- D045 verdict machinery ----------------------------------------------------------------------
+
+
+def test_holm_steps_down_and_stops_at_the_first_failure():
+    from gkx.report import holm
+
+    # sorted p: 0.001 <= .05/4, 0.012 <= .05/3, 0.03 > .05/2 → stop; 0.04 not rejected either
+    assert holm([0.03, 0.001, 0.04, 0.012]) == [False, True, False, True]
+    assert holm([0.04, 0.04]) == [False, False]
+    assert holm([0.02, 0.01]) == [True, True]
+
+
+def test_demeaned_frame_removes_each_months_mean_from_target_and_forecasts():
+    from gkx.report import demeaned_frame
+
+    df = pd.DataFrame(
+        {"yyyymm": [1, 1, 2, 2], "target": [1.0, 3.0, 5.0, 9.0], "a": [2.0, 2.0, 7.0, 9.0]}
+    )
+    out = demeaned_frame(df, ["a"])
+    assert out["target"].tolist() == [-1.0, 1.0, -2.0, 2.0]
+    assert out["a"].tolist() == [0.0, 0.0, -1.0, 1.0]
+    assert df["target"].tolist() == [1.0, 3.0, 5.0, 9.0]  # input untouched
+
+
+def test_verdict_mapping():
+    from gkx.report import verdict
+
+    assert verdict(primary_lo=0.001, rejected=[True] * 7) == "replicates"
+    assert verdict(primary_lo=0.001, rejected=[True, False]) == "partially replicates"
+    assert verdict(primary_lo=0.001, rejected=[False, False]) == "partially replicates"
+    assert verdict(primary_lo=-0.001, rejected=[True] * 7) == "does not replicate"
