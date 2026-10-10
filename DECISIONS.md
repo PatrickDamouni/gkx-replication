@@ -483,3 +483,68 @@ Reported for every model next to the primary pooled R²; none changes the succes
 - Arm 1 raw target (with the same constant fallback), Arm 2 within-month demeaned target with the
   training mean added back. Inputs: GKX z with raw macro (D040). Decided now so it is not another
   post-rehearsal change.
+
+## D044 — Provenance, crash rule, thread pins, reproduction claim (council 8, 2026-10-10, before any test look)
+- **Panel:** `data/processed/panel_datashare.parquet` sha256
+  `dfffda9aada2ddddbd9a74ecf1acdabaa91ea74f40f38f039a83b796ec1d56fc`; `scripts/run_test.sh` refuses
+  to start if it differs. Environment at the freeze: macOS 26.6.2, Apple M4 Pro (12 cores, 24 GB),
+  Python 3.12.13, lightgbm 4.7.0, torch 2.14.1, numpy 2.5.3, pandas 2.2.3;
+  `uv.lock` sha256 `9678171616b6a5f61c0be90b9f43e0f53ad5e48bb3750c1750c2b1c675f6a2e3`;
+  runs use `uv run --locked`.
+- **Threads:** LightGBM `num_threads=8` (trees.COMMON); torch `set_num_threads(4)` (nn.NUM_THREADS,
+  council 6); `OMP_NUM_THREADS=8`, `VECLIB_MAXIMUM_THREADS=8` exported by `run_test.sh`. Corrects
+  D038, which said torch uses 8 threads.
+- **Crash rule:** re-run the same launcher command at the same commit. `evaluate()` keys every run on
+  (name, commit, features, seeds, folds, target): a finished run whose prediction file still matches
+  its logged sha256 is **reused** (ledger event `reused`, no refit, no new look); an unfinished run
+  **resumes** from its hashed per-fold checkpoints under the same run_id. A re-run at the same commit
+  is therefore not a new look. Any code change after a crash is a new commit, logged here as a
+  deviation, and every earlier ledger row is kept.
+- **Reproduction claim:** bit-identical predictions on this machine with this lock file and thread
+  environment; on other hardware or BLAS, equal within floating-point tolerance only.
+- **Disclosure:** the `reference-v1` tag was meant to hold GKX Table 1 but held only `.gitkeep`:
+  `.gitignore`'s `*.csv` silently excluded `paper/gkx_table1.csv`, and I reported it as committed
+  when it was not. The values (verbatim from GKX 2020 Table 1) were committed at `d322049`, file
+  sha256 `de01425559ba62ed8a30a477ae4c0c399adf683a9124e63488bedf4656139b42`, before any test look.
+
+## D045 — Verdict rule: headline model fixed, one declared confirmatory family with Holm (council 8, user-approved 2026-10-10, before any test look)
+The prereg says "Replicates" = the paper's ranking (NN/trees > penalized linear > OLS-all) and "the
+best model's" R²_oos > 0 with a 95% CI excluding zero, but never fixed which model is "best" or how
+several tests combine. Fixed now, and `scripts/final_report.py` prints the verdict mechanically:
+- **Headline model = NN3** (raw target, faithful arm), GKX's headline. Fixed ex ante; it was the
+  *worst* raw NN in rehearsal (R² 0.481% vs NN2 0.620%), so the choice is not a rehearsal pick.
+- **Primary criterion:** NN3 pooled R²_oos > 0 and its 95% month-block bootstrap CI (D015) excludes
+  zero (`paired_r2_ci(zero, NN3)`). If it fails, the verdict is **does not replicate** whatever
+  the other tests say (prereg "abandon / reframe" clause).
+- **Confirmatory family** (raw arm only; one-sided; Holm step-down at family-wise α = 0.05):
+  1. NN3 vs the training-mean forecast (DM) — the prereg's "beats baseline"; the baseline is D036's
+     training-window mean, because rehearsal showed level alone earns R² ≈ 0.47%.
+  2–5. NN3 vs each of PCR, PLS, ENet+H, GLM+H (DM) — "NN > penalized linear" against all four
+     linear models, not just the softest one.
+  6. GBRT+H vs ENet+H (DM) — "trees > penalized linear".
+  7. ENet+H vs OLS-3+H (Clark–West, nested) — "penalized linear > OLS". Replaces ENet+H vs OLS+H,
+     which cannot lose (OLS+H is −27,000% in rehearsal, D033); that pair is still reported,
+     descriptively.
+- **Verdict:** **replicates** = primary passes and Holm rejects all 7; **partially replicates** =
+  primary passes, some rejected (the report lists which); **does not replicate** = primary fails.
+- **Secondary (never change the verdict):** the `-dm` arms (NN3-dm, GBRT+H-dm vs ENet+H) use a
+  demeaned-error DM (each month's mean target and mean forecast removed), so they test ranking
+  only; all ΔR² CIs; demeaned R²; size subsamples; Sharpe and DSR; per-seed spread (D006b).
+- **What was visible when this was chosen:** the full 1975–1986 rehearsal table
+  (`results/final_report_rehearsal.md`, earlier pair set): NN3 vs ENet+H DM t −1.06, GBRT+H vs ENet+H
+  t −2.29, NN3-dm vs ENet+H p 0.0095, GBRT+H-dm vs ENet+H p 0.055; raw RF −0.29%, GBRT+H +0.14%. On
+  those numbers this rule would say "partially replicates" at best for the raw arm, so it was not
+  tuned to pass. The rehearsal years are a development set (they are also fold 1987's validation
+  window); rehearsal behaviour may not carry over to 18–47-year training windows.
+- **DSR caveat:** N = 14 reported variants; it ignores variants abandoned in rehearsal and treats
+  correlated variants as independent. Both are stated next to the number.
+
+## D046 — Run schedule: linear → trees → two concurrent NN processes (council 8 Performance, user-approved)
+- Linear (~45 min) then trees (~6–7 h), each alone. Then the NN raw arm (NN1, NN2, NN3) and the -dm
+  arm (NN1-dm, NN2-dm, NN3-dm) as two concurrent processes, 4 torch threads each (8 of 12 cores).
+  Never three processes; never trees alongside NNs (LightGBM's 8 threads would oversubscribe).
+- Thread counts per process are unchanged, so predictions are identical to a serial run (checked
+  against the serial rehearsal predictions before the freeze).
+- Condition: the machine has 24 GB. If the frozen-runner rehearsal measures combined peak RSS of the
+  two NN processes above 20 GB, the NN arms run one after the other instead (logged here).
+- Run under `caffeinate -dimsu` in tmux, on AC power with the lid open.
