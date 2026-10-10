@@ -341,3 +341,36 @@ def test_target_arm_is_recorded_in_the_ledger(panel, tmp_path):
     ledger = tmp_path / "trials.jsonl"
     evaluate(lambda s: ZeroModel(), panel, FOLDS[:1], ["x"], ledger=ledger, target="demeaned")
     assert _rows(ledger)[0]["target"] == "demeaned"
+
+
+# --- council 8: a re-run at the same commit reuses finished runs (no second look) --------------
+
+
+class CountsFits(ZeroModel):
+    fits: ClassVar[list[int]] = []
+
+    def fit(self, X, y, X_val, y_val):
+        CountsFits.fits.append(1)
+        return self
+
+
+def test_a_finished_run_is_reused_not_refit_at_the_same_commit(panel, tmp_path):
+    ledger = tmp_path / "trials.jsonl"
+    CountsFits.fits = []
+    first = evaluate(lambda s: CountsFits(), panel, FOLDS[:2], ["x"], ledger=ledger)
+    n = len(CountsFits.fits)
+    again = evaluate(lambda s: CountsFits(), panel, FOLDS[:2], ["x"], ledger=ledger)
+    assert len(CountsFits.fits) == n  # nothing refit
+    pd.testing.assert_frame_equal(first, again)
+    events = [r["event"] for r in _rows(ledger)]
+    assert events.count("started") == 1 and events[-1] == "reused"
+
+
+def test_a_tampered_finished_predictions_file_is_not_reused(panel, tmp_path):
+    ledger = tmp_path / "trials.jsonl"
+    evaluate(lambda s: ZeroModel(), panel, FOLDS[:2], ["x"], ledger=ledger)
+    finished = [r for r in _rows(ledger) if r["event"] == "finished"][0]
+    path = tmp_path / finished["preds_path"]
+    path.write_bytes(path.read_bytes() + b"x")
+    evaluate(lambda s: ZeroModel(), panel, FOLDS[:2], ["x"], ledger=ledger)
+    assert [r["event"] for r in _rows(ledger)].count("started") == 2

@@ -102,8 +102,8 @@ def _sha(path: Path) -> str | None:
     return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
 
 
-def _unfinished(ledger: Path, resume_key: str) -> tuple[str, dict] | None:
-    """Latest run with this resume key that never finished, and its checkpointed folds."""
+def _previous(ledger: Path, resume_key: str) -> tuple[str, dict, dict | None] | None:
+    """Latest run with this resume key: (run_id, checkpointed folds, finished row or None)."""
     if not ledger.exists():
         return None
     rows = [json.loads(line) for line in ledger.read_text().splitlines() if line.strip()]
@@ -113,10 +113,9 @@ def _unfinished(ledger: Path, resume_key: str) -> tuple[str, dict] | None:
     if not runs:
         return None
     run_id = runs[-1]
-    if any(r["event"] == "finished" and r["run_id"] == run_id for r in rows):
-        return None
+    finished = [r for r in rows if r["event"] == "finished" and r["run_id"] == run_id]
     done = {r["refit"]: r for r in rows if r["event"] == "fold_done" and r["run_id"] == run_id}
-    return run_id, done
+    return run_id, done, (finished[-1] if finished else None)
 
 
 def _run_id(name: str, features: list[str]) -> str:
@@ -173,11 +172,17 @@ def evaluate(
     if ledger is not None:
         ledger = Path(ledger)
         ledger.parent.mkdir(parents=True, exist_ok=True)
-        previous = _unfinished(ledger, resume_key)
-        if previous is not None:  # same code, inputs and folds: resume, don't start a new look
-            run_id, done = previous
+        previous = _previous(ledger, resume_key)
+        finished = previous[2] if previous is not None else None
+        if finished is not None and (
+            _sha(ledger.parent / finished["preds_path"]) == finished["preds_sha256"]
+        ):  # D044: same code, inputs and folds already finished → reuse, never refit or re-look
+            _append(ledger, {"event": "reused", "run_id": previous[0], "timestamp": _now()})
+            return pd.read_parquet(ledger.parent / finished["preds_path"])
+        if previous is not None and finished is None:  # same key, crashed: resume from folds
+            run_id, done, _ = previous
             _append(ledger, {"event": "resumed", "run_id": run_id, "timestamp": _now()})
-        else:
+        else:  # new, or a finished file failed its hash: a fresh, logged run
             _append(
                 ledger,
                 {
