@@ -59,7 +59,8 @@ GKX_COLUMN = {
 }
 BASELINES = {"OLS-3", "OLS-3+H", "OLS", "OLS+H"}  # reported, never trials (D028/D034)
 HEADLINE = "NN3"  # D045, fixed ex ante
-# D045 confirmatory family, raw arm, Holm at 5%: (candidate, vs, test)
+# D045/D047 confirmatory family, raw arm: (candidate, vs, test). "replicates" = every p <= 5%
+# (intersection-union); Holm at 5% says which legs hold; test 1 must hold for "partially".
 CONFIRMATORY = [
     ("NN3", "train_mean", "DM"),
     ("NN3", "PCR", "DM"), ("NN3", "PLS", "DM"), ("NN3", "ENet+H", "DM"), ("NN3", "GLM+H", "DM"),
@@ -73,6 +74,26 @@ SECONDARY = [
 ]  # fmt: skip
 PAIRS = CONFIRMATORY + SECONDARY
 ALPHA = 0.05
+
+
+FROZEN_PATHS = ("src", "scripts", "pyproject.toml", "uv.lock")
+
+
+def provenance_errors(
+    runs: dict, run_sha: str, freeze_sha: str, code_changed: str, tree_dirty: bool
+) -> list[str]:
+    """Test mode (D047): every run from the freeze-v1 commit, clean and on the test window."""
+    errors = []
+    if not (run_sha and freeze_sha.startswith(run_sha)):  # ledger keeps short shas
+        errors.append(f"runs come from {run_sha[:7]}, not freeze-v1 {freeze_sha[:7]}")
+    bad = [m for m, (st, _) in runs.items() if st["git_dirty"] or not st["test_window"]]
+    if bad:
+        errors.append(f"dirty or non-test runs: {bad}")
+    if code_changed:
+        errors.append(f"frozen code changed since the run: {code_changed!r}")
+    if tree_dirty:
+        errors.append("uncommitted changes")
+    return errors
 
 
 def _git(*args: str) -> str:
@@ -104,7 +125,10 @@ def _training_mean(preds: pd.DataFrame, panel: pd.DataFrame, folds) -> pd.Series
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--rehearsal", action="store_true")
-    test = not ap.parse_args().rehearsal
+    ap.add_argument("--deviation", default="", help="D-entry allowing a post-look analysis fix")
+    args = ap.parse_args()
+    test = not args.rehearsal
+    deviation_note = ""
     tag = "test" if test else "rehearsal"
     runs = _latest_runs(tag)
     missing = [m for m in MODELS if m not in runs]
@@ -117,10 +141,18 @@ def main() -> None:
     run_sha = shas.pop()
     head = _git("rev-parse", "HEAD")
     if test:
-        dirty = [m for m, (st, _) in runs.items() if st["git_dirty"] or not st["test_window"]]
-        code_changed = _git("diff", "--name-only", run_sha, "HEAD", "--", "src", "scripts")
-        if dirty or code_changed or _git("status", "--porcelain", "--", ".", ":!results"):
-            raise SystemExit(f"refused: dirty runs {dirty} / code changed {code_changed!r} / tree")
+        changed = _git("diff", "--name-only", run_sha, "HEAD", "--", *FROZEN_PATHS)
+        errors = provenance_errors(
+            runs,
+            run_sha,
+            freeze_sha=_git("rev-parse", "freeze-v1^{commit}"),
+            code_changed="" if args.deviation else changed,
+            tree_dirty=bool(_git("status", "--porcelain", "--", ".", ":!results")),
+        )
+        if errors:
+            raise SystemExit("refused: " + "; ".join(errors))
+        if args.deviation and changed:  # D047: a logged post-look analysis fix, shown in the header
+            deviation_note = f"\n\n**Deviation {args.deviation}:** analysis code changed since the run: {changed.split()}."
     for m, (_, fin) in runs.items():
         path = LEDGER.parent / fin["preds_path"]
         if hashlib.sha256(path.read_bytes()).hexdigest() != fin["preds_sha256"]:
@@ -236,17 +268,20 @@ def main() -> None:
         )
     pairs = pd.DataFrame(pair_rows)
     conf = pairs["role"] == "confirmatory"
-    rejected = holm(pairs.loc[conf, "p (one-sided)"].tolist(), ALPHA)
+    conf_p = pairs.loc[conf, "p (one-sided)"].tolist()
+    rejected = holm(conf_p, ALPHA)
     pairs["Holm reject"] = ""
     pairs.loc[conf, "Holm reject"] = ["yes" if r else "no" for r in rejected]
     primary, primary_lo, primary_hi = paired_r2_ci(base, "zero", HEADLINE)
-    result = verdict(primary_lo, rejected)
+    assert CONFIRMATORY[0] == (HEADLINE, "train_mean", "DM")  # test 1 gates "partially" (D047)
+    result = verdict(primary_lo, conf_p, first_rejected=rejected[0], alpha=ALPHA)
     verdict_text = (
         f"**Verdict (D045, computed mechanically): {result}.** Primary: {HEADLINE} R²_oos "
         f"{100 * primary:.3f}%, 95% CI [{100 * primary_lo:.3f}, {100 * primary_hi:.3f}] "
         f"({'excludes' if primary_lo > 0 else 'does not exclude'} zero). Confirmatory family: "
-        f"{sum(rejected)} of {len(rejected)} rejected under Holm "
-        f"at α = {ALPHA}."
+        f"{sum(p <= ALPHA for p in conf_p)} of {len(conf_p)} with p ≤ {ALPHA} (all needed for "
+        f"'replicates'); {sum(rejected)} rejected under Holm; test 1 ({HEADLINE} vs train_mean) "
+        f"{'rejected' if rejected[0] else 'not rejected'}."
     )
 
     gkx = pd.read_csv("paper/gkx_table1.csv").set_index("sample")
@@ -270,7 +305,7 @@ def main() -> None:
     out.write_text(
         f"# Final report ({tag})\n\nPredictions from commit `{run_sha}`; analysis run at `{head}`."
         " All numbers computed by `scripts/final_report.py` after every prediction existed."
-        f" Headline model (fixed before the look, D045): **{HEADLINE}**.\n\n"
+        f" Headline model (fixed before the look, D045): **{HEADLINE}**.{deviation_note}\n\n"
         + verdict_text
         + "\n\n## Pre-specified tests (D045; one-sided p; ΔR² with month-block bootstrap CI)\n\n"
         + pairs.round(4).to_markdown(index=False)

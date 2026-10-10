@@ -12,10 +12,11 @@ operational list only.
 - [x] Pre-specified analysis = `scripts/final_report.py`: headline NN3, confirmatory family with
       Holm, secondary tests, verdict printed mechanically (D045).
 - [x] GKX Table 1 reference values committed (`d322049`, D044 disclosure).
-- [ ] Frozen-runner dry run: `bash scripts/run_test.sh --rehearsal` at the candidate commit, all
-      three families, NN arms concurrent; predictions bit-identical to the earlier rehearsal; peak
-      RSS of the two NN processes ≤ 20 GB (else `NN_SERIAL=1`, D046);
-      `final_report.py --rehearsal` runs.
+- [x] Frozen-runner dry run at `01f0936`: all 18 models bit-identical to the earlier rehearsal
+      (`scripts/check_bit_identity.py`; NN arms concurrent vs earlier serial); a second launch
+      logged 18 `reused` events and 0 refits (D044 crash rule end to end). The diff from `01f0936`
+      to the tag is report, launcher, tests and docs only (D047).
+- [ ] `final_report.py --rehearsal` runs at the candidate commit and prints a verdict.
 
 ## Determinism (D044)
 - [x] LightGBM: `deterministic=True`, `force_row_wise=True`, `num_threads=8`, `seed=0` (trees.COMMON).
@@ -25,10 +26,14 @@ operational list only.
 ## The run (only after the user's explicit go-ahead)
 - [ ] `git tag freeze-v1 <candidate>`; `git checkout freeze-v1`. The launcher refuses any other HEAD,
       a dirty tree, a different panel, or < 10 GB free disk.
-- [ ] AC power, lid open. `nohup bash scripts/run_test.sh >/dev/null 2>&1 &` (the script holds
-      `caffeinate -dimsu` itself). Linear (~45 min) → trees (~6–7 h) → two NN processes (~11–14 h).
+- [ ] ≥ 40 GB free disk (swap grows on the same volume), heavy apps quit, AC power, lid open.
+- [ ] `nohup bash scripts/run_test.sh >/dev/null 2>&1 &` (the script holds `caffeinate -dimsu`).
+      Linear (~45 min) → trees (~6–7 h) → NN raw arm → NN -dm arm (serial, D047; ≈ 30 h total).
       Predictions only; no metric is printed (council 5).
-- [ ] Watch only `results/test_run.log*` timestamps and `fold_done` counts — never metrics.
+- [ ] Watch only `results/test_run.log*` timestamps and `grep -c fold_done results/trials.jsonl`
+      — never read ledger rows (they carry test-year validation scores) and never metrics.
+- [ ] No Claude session or council writes inside the repo during the run (a new file dirties the
+      tree and the next model refuses).
 - [ ] Crash (D044): re-run the same command at the same commit. Finished runs are reused, unfinished
       ones resume from fold checkpoints; not a new look. A code change means a new commit logged as a
       deviation, with every earlier ledger row kept.

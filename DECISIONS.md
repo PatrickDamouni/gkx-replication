@@ -548,3 +548,43 @@ several tests combine. Fixed now, and `scripts/final_report.py` prints the verdi
 - Condition: the machine has 24 GB. If the frozen-runner rehearsal measures combined peak RSS of the
   two NN processes above 20 GB, the NN arms run one after the other instead (logged here).
 - Run under `caffeinate -dimsu` in tmux, on AC power with the lid open.
+
+## D047 — Verdict rule amended; fail-closed report; serial NNs (council 9, user-approved 2026-10-10, before any test look)
+Council 9 found the D045 code and text disagreed at the edge that matters, and that a NaN counted
+as a pass. Decided by the user before any test-window number exists:
+- **"Replicates" = intersection-union test:** the primary passes and *every* one of the 7
+  confirmatory one-sided p-values is ≤ 0.05. That is the valid 5% test of "every leg holds"; Holm
+  on all 7 was stricter than the claim needs (seven p = 0.01 would fail it). Holm at 5% is still
+  computed and reported to say which individual legs hold.
+- **"Partially replicates"** needs the primary *and* test 1 (NN3 vs the training-mean forecast)
+  rejected under Holm: the ML model must beat a constant. Primary passes without test 1 → **"does
+  not replicate (level only)"** (rehearsal: the training mean alone earns R² ≈ 0.47%). Replaces
+  D045's "some rejected", which the code had implemented as "any number including zero".
+- **Fail closed:** a NaN p-value never rejects (Holm treats it as 1.0, intersection-union fails),
+  and a NaN primary CI bound fails the primary.
+- **Prereg amendment, stated plainly:** test 7 (ENet+H vs OLS-3+H, Clark–West) amends
+  PREREGISTRATION.md's "penalized linear > OLS-all" and D010's pairing; OLS-all (OLS+H) cannot lose
+  (D033), so the replacement is stricter. ENet+H vs OLS+H is still reported as secondary.
+- **Freeze check in the report:** test mode refuses unless every run comes from the `freeze-v1`
+  commit, is clean and on the test window, and `src/`, `scripts/`, `pyproject.toml`, `uv.lock`
+  are unchanged since; `provenance_errors()` is unit-tested.
+- **D046 amended — NNs run serially by default** (`NN_CONCURRENT=1` opts in). The rehearsal RSS
+  (1975–1986 panel, ~⅓ of the rows) cannot test the 20 GB condition; council 8's tiled measurement
+  (9–13 GB per process) already implies 18–26 GB for two on a 24 GB machine with swap in use.
+  Total run ≈ 30 h. Thread counts are unchanged, so predictions do not depend on the schedule.
+- **Bit-identity pass rule** (written before the tree/NN comparison was read): for each of the 18
+  models, every `pred*` column of the 01f0936 frozen-runner rehearsal run equals, with
+  `np.array_equal`, the most recent earlier finished rehearsal run of the same name. Any mismatch
+  blocks the tag until it is explained in a D-entry.
+- **What the rehearsal covers:** the `01f0936 → freeze-v1` diff touches only the report side
+  (`src/gkx/report.py`, `scripts/final_report.py`), the launcher (`scripts/run_test.sh`: serial NNs,
+  30 GB disk gate, refusals logged), `scripts/check_bit_identity.py`, `.gitignore`, tests and docs. `report.py` and `final_report.py` are not imported by `run_test.py`, so the dry run still
+  validates the frozen prediction path; `final_report.py --rehearsal` is re-run at the tag.
+- **D044 addendum — an analysis bug found after the look:** fix it in a new commit logged as a
+  deviation, re-run `final_report.py --deviation D0xx` (the flag names the decision; the changed files are
+  printed in the report header), and publish both outputs side by side; predictions are never
+  re-fit.
+- **During the run:** no Claude session or council writes inside the repo (a new file dirties the
+  tree and the next spec refuses); `.claude/settings.local.json` is git-ignored; progress is read
+  only as counts of `fold_done` rows, never the rows themselves (they carry test-year validation
+  scores).

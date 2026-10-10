@@ -38,6 +38,25 @@ def test_run_list_matches_report_models_and_trial_flags():
     assert all(len(list(s[3])) == 5 for s in specs if s[0].startswith("NN"))
 
 
+def test_confirmatory_family_is_the_declared_seven():
+    rep = _load("final_report")
+    assert len(rep.CONFIRMATORY) == 7 and rep.CONFIRMATORY[0] == ("NN3", "train_mean", "DM")
+    assert not set(rep.CONFIRMATORY) & set(rep.SECONDARY)
+    assert not any(a.endswith("-dm") or b.endswith("-dm") for a, b, _ in rep.CONFIRMATORY)
+
+
+def test_provenance_requires_the_freeze_commit_and_clean_test_runs():
+    rep = _load("final_report")
+    good = {"NN3": ({"git_dirty": False, "test_window": True}, {})}
+    assert rep.provenance_errors(good, "abc1234", "abc1234ffff", "", False) == []
+    assert rep.provenance_errors(good, "abc1234", "def5678ffff", "", False)  # not freeze-v1
+    assert rep.provenance_errors(good, "", "def5678ffff", "", False)
+    stale = {"NN3": ({"git_dirty": False, "test_window": False}, {})}
+    assert rep.provenance_errors(stale, "abc1234", "abc1234ffff", "", False)
+    assert rep.provenance_errors(good, "abc1234", "abc1234ffff", "src/gkx/nn.py", False)
+    assert rep.provenance_errors(good, "abc1234", "abc1234ffff", "", True)
+
+
 def test_report_references_only_frozen_models():
     rep = _load("final_report")
     assert rep.HEADLINE in rep.MODELS and rep.HEADLINE not in rep.BASELINES

@@ -44,10 +44,11 @@ def sharpe_ci(
 
 def holm(pvalues: list[float], alpha: float = 0.05) -> list[bool]:
     """Holm step-down: reject the k-th smallest p while p ≤ α / (m − k + 1) (D045)."""
-    order = np.argsort(pvalues, kind="stable")
-    reject = [False] * len(pvalues)
+    p = [x if np.isfinite(x) else 1.0 for x in pvalues]  # fail closed: NaN never rejects (D047)
+    order = np.argsort(p, kind="stable")
+    reject = [False] * len(p)
     for k, i in enumerate(order):
-        if pvalues[i] > alpha / (len(pvalues) - k):
+        if not p[i] <= alpha / (len(p) - k):
             break
         reject[i] = True
     return reject
@@ -62,8 +63,17 @@ def demeaned_frame(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     return out
 
 
-def verdict(primary_lo: float, rejected: list[bool]) -> str:
-    """D045: the primary CI must exclude zero; then all confirmatory rejections → replicates."""
-    if primary_lo <= 0:
+def verdict(
+    primary_lo: float, pvalues: list[float], first_rejected: bool, alpha: float = 0.05
+) -> str:
+    """D045 as amended by D047; every NaN fails closed.
+
+    Primary CI must exclude zero. "replicates" = every confirmatory p <= alpha (intersection-union
+    test of the conjunction). Otherwise "partially replicates" needs test 1 (headline vs the
+    training-mean forecast) rejected under Holm; without it the result is level only.
+    """
+    if not primary_lo > 0:
         return "does not replicate"
-    return "replicates" if all(rejected) else "partially replicates"
+    if all(p <= alpha for p in pvalues):  # NaN <= alpha is False
+        return "replicates"
+    return "partially replicates" if first_rejected else "does not replicate (level only)"

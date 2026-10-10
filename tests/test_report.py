@@ -77,7 +77,19 @@ def test_demeaned_frame_removes_each_months_mean_from_target_and_forecasts():
 def test_verdict_mapping():
     from gkx.report import verdict
 
-    assert verdict(primary_lo=0.001, rejected=[True] * 7) == "replicates"
-    assert verdict(primary_lo=0.001, rejected=[True, False]) == "partially replicates"
-    assert verdict(primary_lo=0.001, rejected=[False, False]) == "partially replicates"
-    assert verdict(primary_lo=-0.001, rejected=[True] * 7) == "does not replicate"
+    ok = [0.01] * 7
+    assert verdict(0.001, ok, first_rejected=False) == "replicates"  # IUT: each p <= .05
+    assert verdict(0.001, [0.01] * 6 + [0.2], True) == "partially replicates"
+    assert verdict(0.001, [0.2] * 6 + [0.001], False) == "does not replicate (level only)"
+    assert verdict(-0.001, ok, True) == "does not replicate"
+    assert verdict(0.0, ok, True) == "does not replicate"
+
+
+def test_verdict_and_holm_fail_closed_on_nan():
+    from gkx.report import holm, verdict
+
+    nan = float("nan")
+    assert verdict(nan, [0.01] * 7, True) == "does not replicate"
+    assert verdict(0.001, [0.01] * 6 + [nan], True) == "partially replicates"
+    assert holm([nan, 0.001]) == [False, True]
+    assert holm([nan]) == [False]
