@@ -369,7 +369,7 @@ def test_a_finished_run_is_reused_not_refit_at_the_same_commit(panel, tmp_path):
 def test_a_tampered_finished_predictions_file_is_not_reused(panel, tmp_path):
     ledger = tmp_path / "trials.jsonl"
     evaluate(lambda s: ZeroModel(), panel, FOLDS[:2], ["x"], ledger=ledger)
-    finished = [r for r in _rows(ledger) if r["event"] == "finished"][0]
+    finished = next(r for r in _rows(ledger) if r["event"] == "finished")
     path = tmp_path / finished["preds_path"]
     path.write_bytes(path.read_bytes() + b"x")
     evaluate(lambda s: ZeroModel(), panel, FOLDS[:2], ["x"], ledger=ledger)
