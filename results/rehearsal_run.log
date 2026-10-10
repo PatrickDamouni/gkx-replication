@@ -1,0 +1,122 @@
+2026-10-10 15:24:30 start rehearsal reference-v1-41-g01f0936 01f0936
+2026-10-10 15:24:30 family linear
+15:24:33 done OLS-3-rehearsal (2s)
+15:24:35 done OLS-3+H-rehearsal (2s)
+15:24:40 done OLS-rehearsal (6s)
+15:24:50 done OLS+H-rehearsal (10s)
+15:25:04 done PCR-rehearsal (14s)
+15:25:17 done PLS-rehearsal (13s)
+15:25:47 done ENet+H-rehearsal (30s)
+15:27:07 done GLM+H-rehearsal (80s)
+      157.54 real       154.27 user         6.40 sys
+          8531705856  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             3606533  page reclaims
+                 389  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                 158  voluntary context switches
+               61791  involuntary context switches
+           133673399  instructions retired
+            50787036  cycles elapsed
+            12648976  peak memory footprint
+2026-10-10 15:27:08 family trees
+15:29:02 done GBRT+H-rehearsal (112s)
+15:31:17 done GBRT+H-dm-rehearsal (136s)
+15:47:14 done RF-rehearsal (957s)
+16:03:04 done RF-dm-rehearsal (950s)
+     2156.29 real      9925.12 user      1033.98 sys
+          8384790528  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             5047035  page reclaims
+                1144  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                2340  voluntary context switches
+           214597793  involuntary context switches
+           138623500  instructions retired
+            53603092  cycles elapsed
+            12665360  peak memory footprint
+2026-10-10 16:03:04 family nn (two concurrent processes)
+          8531705856  maximum resident set size
+          8384790528  maximum resident set size
+          4506173440  maximum resident set size
+          4516134912  maximum resident set size
+2026-10-10 17:45:09 all rehearsal predictions written; next: uv run --locked python scripts/final_report.py --rehearsal
+2026-10-10 17:46:20 start rehearsal reference-v1-41-g01f0936 01f0936
+2026-10-10 17:46:20 family linear
+17:46:22 done OLS-3-rehearsal (0s)
+17:46:22 done OLS-3+H-rehearsal (0s)
+17:46:22 done OLS-rehearsal (0s)
+17:46:22 done OLS+H-rehearsal (0s)
+17:46:22 done PCR-rehearsal (0s)
+17:46:22 done PLS-rehearsal (0s)
+17:46:23 done ENet+H-rehearsal (0s)
+17:46:23 done GLM+H-rehearsal (0s)
+        2.39 real         2.75 user         0.78 sys
+          2992848896  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              301373  page reclaims
+                 154  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                1902  voluntary context switches
+                2695  involuntary context switches
+           131100726  instructions retired
+            48170638  cycles elapsed
+            12616208  peak memory footprint
+2026-10-10 17:46:23 family trees
+17:46:25 done GBRT+H-rehearsal (0s)
+17:46:25 done GBRT+H-dm-rehearsal (0s)
+17:46:25 done RF-rehearsal (0s)
+17:46:25 done RF-dm-rehearsal (0s)
+        2.13 real         2.63 user         0.67 sys
+          3008610304  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              265775  page reclaims
+                 282  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                 229  voluntary context switches
+                1897  involuntary context switches
+           131375151  instructions retired
+            48941493  cycles elapsed
+            12681720  peak memory footprint
+2026-10-10 17:46:25 family nn (two concurrent processes)
+          8531705856  maximum resident set size
+          8384790528  maximum resident set size
+          8531705856  maximum resident set size
+          8384790528  maximum resident set size
+          4506173440  maximum resident set size
+          4516134912  maximum resident set size
+          2992848896  maximum resident set size
+          3008610304  maximum resident set size
+          4506173440  maximum resident set size
+          2972729344  maximum resident set size
+          4516134912  maximum resident set size
+          2988359680  maximum resident set size
+2026-10-10 17:46:29 all rehearsal predictions written; next: uv run --locked python scripts/final_report.py --rehearsal

@@ -1,0 +1,42 @@
+16:36:25 done NN1-dm-rehearsal (1999s)
+17:10:41 done NN2-dm-rehearsal (2056s)
+17:45:09 done NN3-dm-rehearsal (2068s)
+     6125.50 real     13926.12 user       839.78 sys
+          4516134912  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             3662022  page reclaims
+                1569  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                2497  voluntary context switches
+           170468629  involuntary context switches
+           126095882  instructions retired
+            48470824  cycles elapsed
+            12648976  peak memory footprint
+17:46:28 done NN1-dm-rehearsal (2s)
+17:46:28 done NN2-dm-rehearsal (0s)
+17:46:28 done NN3-dm-rehearsal (0s)
+        3.86 real         4.11 user         0.93 sys
+          2988359680  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              292133  page reclaims
+                1361  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                 497  voluntary context switches
+               13077  involuntary context switches
+           123628838  instructions retired
+            47763123  cycles elapsed
+            12599824  peak memory footprint
