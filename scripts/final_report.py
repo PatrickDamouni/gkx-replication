@@ -276,7 +276,7 @@ def main() -> None:
     assert CONFIRMATORY[0] == (HEADLINE, "train_mean", "DM")  # test 1 gates "partially" (D047)
     result = verdict(primary_lo, conf_p, first_rejected=rejected[0], alpha=ALPHA)
     verdict_text = (
-        f"**Verdict (D045, computed mechanically): {result}.** Primary: {HEADLINE} R²_oos "
+        f"**Verdict (D045 as amended by D047, computed mechanically): {result}.** Primary: {HEADLINE} R²_oos "
         f"{100 * primary:.3f}%, 95% CI [{100 * primary_lo:.3f}, {100 * primary_hi:.3f}] "
         f"({'excludes' if primary_lo > 0 else 'does not exclude'} zero). Confirmatory family: "
         f"{sum(p <= ALPHA for p in conf_p)} of {len(conf_p)} with p ≤ {ALPHA} (all needed for "
@@ -307,7 +307,7 @@ def main() -> None:
         " All numbers computed by `scripts/final_report.py` after every prediction existed."
         f" Headline model (fixed before the look, D045): **{HEADLINE}**.{deviation_note}\n\n"
         + verdict_text
-        + "\n\n## Pre-specified tests (D045; one-sided p; ΔR² with month-block bootstrap CI)\n\n"
+        + "\n\n## Pre-specified tests (D045/D047; one-sided p; ΔR² with month-block bootstrap CI)\n\n"
         + pairs.round(4).to_markdown(index=False)
         + "\n\n## Per model\n\n"
         + table.round(4).to_markdown(index=False)
