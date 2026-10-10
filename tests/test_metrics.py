@@ -173,3 +173,37 @@ def test_tie_breaking_does_not_depend_on_row_order():
     a = decile_long_short(df, "pred")
     b = decile_long_short(df.sample(frac=1, random_state=3), "pred")
     pd.testing.assert_frame_equal(a, b)
+
+
+# --- deflated Sharpe ratio (Bailey & López de Prado 2014; D034 trial count) -------------------
+
+
+def test_deflated_sharpe_with_one_trial_is_the_probabilistic_sharpe_ratio():
+    """N = 1 → threshold 0. Hand value: SR 0.1/month, T 360, normal returns:
+    z = 0.1·√359 / √(1 + ½·0.1²) = 1.8947 / 1.00250 = 1.8900 → Φ(z) = 0.97062."""
+    from gkx.metrics import deflated_sharpe
+
+    assert deflated_sharpe(sr=0.1, n_trials=1, sr_var=0.0, n_obs=360, skew=0.0, kurt=3.0) == (
+        pytest.approx(0.97062, abs=1e-4)
+    )
+
+
+def test_more_trials_raise_the_bar():
+    from gkx.metrics import deflated_sharpe
+
+    vals = [
+        deflated_sharpe(sr=0.1, n_trials=n, sr_var=0.002, n_obs=360, skew=0.0, kurt=3.0)
+        for n in (1, 5, 11, 50)
+    ]
+    assert vals == sorted(vals, reverse=True) and vals[0] > vals[-1]
+
+
+def test_expected_max_sharpe_threshold_matches_the_formula_by_hand():
+    """SR0 = √V·((1−γ)Φ⁻¹(1−1/N) + γΦ⁻¹(1−1/(Ne))); N=11, V=0.002 → computed independently here."""
+    from scipy.stats import norm
+
+    from gkx.metrics import expected_max_sharpe
+
+    g = 0.5772156649
+    expected = np.sqrt(0.002) * ((1 - g) * norm.ppf(1 - 1 / 11) + g * norm.ppf(1 - 1 / (11 * np.e)))
+    assert expected_max_sharpe(n_trials=11, sr_var=0.002) == pytest.approx(expected)

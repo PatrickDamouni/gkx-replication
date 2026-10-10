@@ -110,3 +110,33 @@ def decile_long_short(df: pd.DataFrame, pred: str) -> pd.DataFrame:
 def sharpe(monthly: pd.Series) -> float:
     """Annualized: monthly mean / monthly sd × √12 (D015)."""
     return float(monthly.mean() / monthly.std(ddof=1) * np.sqrt(12))
+
+
+EULER_GAMMA = 0.5772156649015329
+
+
+def expected_max_sharpe(n_trials: int, sr_var: float) -> float:
+    """Expected maximum Sharpe of N trials under the null (Bailey & López de Prado 2014, eq. 5)."""
+    if n_trials <= 1:
+        return 0.0
+    g = EULER_GAMMA
+    return float(
+        np.sqrt(sr_var)
+        * (
+            (1 - g) * stats.norm.ppf(1 - 1 / n_trials)
+            + g * stats.norm.ppf(1 - 1 / (n_trials * np.e))
+        )
+    )
+
+
+def deflated_sharpe(
+    sr: float, n_trials: int, sr_var: float, n_obs: int, skew: float, kurt: float
+) -> float:
+    """Deflated Sharpe ratio: P(true SR > expected max SR of N null trials).
+
+    `sr` and `sr_var` are per-period (monthly, non-annualized) Sharpe ratios; `kurt` is raw (normal = 3).
+    N is the number of reported model variants (D034).
+    """
+    sr0 = expected_max_sharpe(n_trials, sr_var)
+    denom = np.sqrt(1 - skew * sr + (kurt - 1) / 4 * sr**2)
+    return float(stats.norm.cdf((sr - sr0) * np.sqrt(n_obs - 1) / denom))
