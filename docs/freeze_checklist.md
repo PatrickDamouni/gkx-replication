@@ -16,7 +16,7 @@ operational list only.
       (`scripts/check_bit_identity.py`; NN arms concurrent vs earlier serial); a second launch
       logged 18 `reused` events and 0 refits (D044 crash rule end to end). The diff from `01f0936`
       to the tag is report, launcher, tests and docs only (D047).
-- [x] `final_report.py --rehearsal` ran at `04d38e7` (D048 code) and printed a verdict:
+- [x] `final_report.py --rehearsal` ran at `765d929` (D048 code) and printed a verdict:
       "does not replicate" on 1975–1986 (`results/final_report_rehearsal.md`).
 
 ## Determinism (D044)
