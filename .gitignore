@@ -12,3 +12,4 @@ data/sealed/
 !config/*.csv
 !paper/*.csv
 .claude/settings.local.json
+.claude/council-cache/

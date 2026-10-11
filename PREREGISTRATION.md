@@ -24,6 +24,9 @@ Two parts:
 - **"Replicates"** = same model *ranking* as the paper (NN/trees > penalized linear >
   OLS-all), and the best model's R²_oos is positive with a 95% CI excluding zero.
   Matching the paper's exact numbers is **not** required — different data build.
+  > Operationalized and amended before any test-window look in DECISIONS.md D045 (headline
+  > model, confirmatory family), D047 and D048 (final verdict labels). The tag `prereg-v1`
+  > keeps the original text.
 - **"Beats baseline"** = Diebold-Mariano test vs. the baseline, p < 0.05, on the test window.
 - **Economic metric:** decile long-short portfolio, value-weighted and equal-weighted,
   monthly Sharpe with bootstrap CI. Report the deflated Sharpe ratio

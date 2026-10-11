@@ -508,6 +508,7 @@ Reported for every model next to the primary pooled R²; none changes the succes
   sha256 `de01425559ba62ed8a30a477ae4c0c399adf683a9124e63488bedf4656139b42`, before any test look.
 
 ## D045 — Verdict rule: headline model fixed, one declared confirmatory family with Holm (council 8, user-approved 2026-10-10, before any test look)
+> **Amended by D047 and D048** (verdict labels; Holm became descriptive). The current rule is D048.
 The prereg says "Replicates" = the paper's ranking (NN/trees > penalized linear > OLS-all) and "the
 best model's" R²_oos > 0 with a 95% CI excluding zero, but never fixed which model is "best" or how
 several tests combine. Fixed now, and `scripts/final_report.py` prints the verdict mechanically:
@@ -540,6 +541,7 @@ several tests combine. Fixed now, and `scripts/final_report.py` prints the verdi
   correlated variants as independent. Both are stated next to the number.
 
 ## D046 — Run schedule: linear → trees → two concurrent NN processes (council 8 Performance, user-approved)
+> **Amended by D047:** NN arms run serially by default; concurrency is opt-in (`NN_CONCURRENT=1`).
 - Linear (~45 min) then trees (~6–7 h), each alone. Then the NN raw arm (NN1, NN2, NN3) and the -dm
   arm (NN1-dm, NN2-dm, NN3-dm) as two concurrent processes, 4 torch threads each (8 of 12 cores).
   Never three processes; never trees alongside NNs (LightGBM's 8 threads would oversubscribe).
@@ -588,3 +590,18 @@ as a pass. Decided by the user before any test-window number exists:
   tree and the next spec refuses); `.claude/settings.local.json` is git-ignored; progress is read
   only as counts of `fold_done` rows, never the rows themselves (they carry test-year validation
   scores).
+
+## D048 — "Partially replicates" uses test 1 at raw α, so the verdict is monotone (council 10, user-approved 2026-10-10, before any test look)
+- Council 10 found D047's labels non-monotone: "replicates" used each raw p ≤ 0.05, but
+  "partially" needed test 1 rejected under Holm across all 7. Seven p = 0.01 gave "replicates"
+  while printing "test 1 not rejected"; raising only test 7 to 0.06 dropped the verdict two levels
+  to "does not replicate (level only)".
+- **Rule (final):** primary fails → "does not replicate". Otherwise every confirmatory p ≤ 0.05 →
+  "replicates"; else test 1 (NN3 vs the training-mean forecast) p ≤ 0.05 → "partially replicates";
+  else "does not replicate (level only)". Both labels are intersection-union tests of a
+  conjunction (valid at 5%), "replicates" implies "partially", and a worse p-value can never
+  improve the label (`test_verdict_is_monotone_in_each_p_value`). NaN still fails closed.
+- Holm at 5% is still computed and reported, as a description of which individual legs survive a
+  family-wise correction; it no longer decides any label.
+- Prediction path untouched (report code only); `.claude/council-cache/` is now git-ignored so a
+  council record can never dirty the tree during the run (records are added with `git add -f`).

@@ -63,17 +63,18 @@ def demeaned_frame(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
     return out
 
 
-def verdict(
-    primary_lo: float, pvalues: list[float], first_rejected: bool, alpha: float = 0.05
-) -> str:
-    """D045 as amended by D047; every NaN fails closed.
+def verdict(primary_lo: float, pvalues: list[float], alpha: float = 0.05) -> str:
+    """D045 as amended by D047 and D048; every NaN fails closed; monotone in every p-value.
 
-    Primary CI must exclude zero. "replicates" = every confirmatory p <= alpha (intersection-union
-    test of the conjunction). Otherwise "partially replicates" needs test 1 (headline vs the
-    training-mean forecast) rejected under Holm; without it the result is level only.
+    Primary CI must exclude zero. "replicates" = every confirmatory p <= alpha; "partially
+    replicates" = test 1 (headline vs the training-mean forecast, pvalues[0]) p <= alpha. Both are
+    intersection-union tests of a conjunction, valid at alpha, and "replicates" implies
+    "partially". Holm is reported separately and never decides the label.
     """
     if not primary_lo > 0:
         return "does not replicate"
     if all(p <= alpha for p in pvalues):  # NaN <= alpha is False
         return "replicates"
-    return "partially replicates" if first_rejected else "does not replicate (level only)"
+    if pvalues[0] <= alpha:
+        return "partially replicates"
+    return "does not replicate (level only)"

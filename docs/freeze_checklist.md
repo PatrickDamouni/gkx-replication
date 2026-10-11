@@ -16,7 +16,8 @@ operational list only.
       (`scripts/check_bit_identity.py`; NN arms concurrent vs earlier serial); a second launch
       logged 18 `reused` events and 0 refits (D044 crash rule end to end). The diff from `01f0936`
       to the tag is report, launcher, tests and docs only (D047).
-- [ ] `final_report.py --rehearsal` runs at the candidate commit and prints a verdict.
+- [ ] `final_report.py --rehearsal` runs at the candidate commit and prints a verdict (last run at
+      `0555155` before the D048 change; re-run at the tag candidate).
 
 ## Determinism (D044)
 - [x] LightGBM: `deterministic=True`, `force_row_wise=True`, `num_threads=8`, `seed=0` (trees.COMMON).
@@ -25,7 +26,7 @@ operational list only.
 
 ## The run (only after the user's explicit go-ahead)
 - [ ] `git tag freeze-v1 <candidate>`; `git checkout freeze-v1`. The launcher refuses any other HEAD,
-      a dirty tree, a different panel, or < 10 GB free disk.
+      a dirty tree, a different panel, or < 30 GB free disk.
 - [ ] ≥ 40 GB free disk (swap grows on the same volume), heavy apps quit, AC power, lid open.
 - [ ] `nohup bash scripts/run_test.sh >/dev/null 2>&1 &` (the script holds `caffeinate -dimsu`).
       Linear (~45 min) → trees (~6–7 h) → NN raw arm → NN -dm arm (serial, D047; ≈ 30 h total).

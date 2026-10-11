@@ -273,14 +273,14 @@ def main() -> None:
     pairs["Holm reject"] = ""
     pairs.loc[conf, "Holm reject"] = ["yes" if r else "no" for r in rejected]
     primary, primary_lo, primary_hi = paired_r2_ci(base, "zero", HEADLINE)
-    assert CONFIRMATORY[0] == (HEADLINE, "train_mean", "DM")  # test 1 gates "partially" (D047)
-    result = verdict(primary_lo, conf_p, first_rejected=rejected[0], alpha=ALPHA)
+    assert CONFIRMATORY[0] == (HEADLINE, "train_mean", "DM")  # test 1 gates "partially" (D048)
+    result = verdict(primary_lo, conf_p, alpha=ALPHA)
     verdict_text = (
         f"**Verdict (D045 as amended by D047, computed mechanically): {result}.** Primary: {HEADLINE} R²_oos "
         f"{100 * primary:.3f}%, 95% CI [{100 * primary_lo:.3f}, {100 * primary_hi:.3f}] "
         f"({'excludes' if primary_lo > 0 else 'does not exclude'} zero). Confirmatory family: "
         f"{sum(p <= ALPHA for p in conf_p)} of {len(conf_p)} with p ≤ {ALPHA} (all needed for "
-        f"'replicates'); {sum(rejected)} rejected under Holm; test 1 ({HEADLINE} vs train_mean) "
+        f"'replicates'); {sum(rejected)} rejected under Holm (descriptive); test 1 ({HEADLINE} vs train_mean) "
         f"{'rejected' if rejected[0] else 'not rejected'}."
     )
 

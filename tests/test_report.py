@@ -78,18 +78,32 @@ def test_verdict_mapping():
     from gkx.report import verdict
 
     ok = [0.01] * 7
-    assert verdict(0.001, ok, first_rejected=False) == "replicates"  # IUT: each p <= .05
-    assert verdict(0.001, [0.01] * 6 + [0.2], True) == "partially replicates"
-    assert verdict(0.001, [0.2] * 6 + [0.001], False) == "does not replicate (level only)"
-    assert verdict(-0.001, ok, True) == "does not replicate"
-    assert verdict(0.0, ok, True) == "does not replicate"
+    assert verdict(0.001, ok) == "replicates"  # IUT: each p <= .05, though Holm rejects none
+    assert verdict(0.001, [0.01] * 6 + [0.06]) == "partially replicates"  # monotone (council 10)
+    assert verdict(0.001, [0.06] + [0.001] * 6) == "does not replicate (level only)"
+    assert verdict(-0.001, ok) == "does not replicate"
+    assert verdict(0.0, ok) == "does not replicate"
+
+
+def test_verdict_is_monotone_in_each_p_value():
+    from gkx.report import verdict
+
+    rank = {"does not replicate (level only)": 0, "partially replicates": 1, "replicates": 2}
+    rng = np.random.default_rng(0)
+    for _ in range(500):
+        p = rng.choice([0.001, 0.03, 0.05, 0.051, 0.2], size=7).tolist()
+        for i in range(7):
+            worse = p.copy()
+            worse[i] = min(1.0, p[i] + 0.05)
+            assert rank[verdict(0.001, worse)] <= rank[verdict(0.001, p)]
 
 
 def test_verdict_and_holm_fail_closed_on_nan():
     from gkx.report import holm, verdict
 
     nan = float("nan")
-    assert verdict(nan, [0.01] * 7, True) == "does not replicate"
-    assert verdict(0.001, [0.01] * 6 + [nan], True) == "partially replicates"
+    assert verdict(nan, [0.01] * 7) == "does not replicate"
+    assert verdict(0.001, [0.01] * 6 + [nan]) == "partially replicates"
+    assert verdict(0.001, [nan] + [0.01] * 6) == "does not replicate (level only)"
     assert holm([nan, 0.001]) == [False, True]
     assert holm([nan]) == [False]

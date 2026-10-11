@@ -28,7 +28,7 @@ uv run python scripts/final_report.py --rehearsal
 
 The 1987–2016 test window is looked at once, from the `freeze-v1` tag
 ([`docs/freeze_checklist.md`](docs/freeze_checklist.md)); the verdict is printed mechanically by
-`scripts/final_report.py` under D045.
+`scripts/final_report.py` under D045 as amended by D047–D048.
 
 ## Setup
 
