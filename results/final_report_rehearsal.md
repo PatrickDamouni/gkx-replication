@@ -1,8 +1,8 @@
 # Final report (rehearsal)
 
-Predictions from commit `01f0936`; analysis run at `05551556dc846bfcacb3a977a846171e3086ac10`. All numbers computed by `scripts/final_report.py` after every prediction existed. Headline model (fixed before the look, D045): **NN3**.
+Predictions from commit `01f0936`; analysis run at `04d38e77a19afab16a1a92d6464520c364008f93`. All numbers computed by `scripts/final_report.py` after every prediction existed. Headline model (fixed before the look, D045): **NN3**.
 
-**Verdict (D045 as amended by D047, computed mechanically): does not replicate.** Primary: NN3 R²_oos 0.481%, 95% CI [-0.171, 1.123] (does not exclude zero). Confirmatory family: 1 of 7 with p ≤ 0.05 (all needed for 'replicates'); 1 rejected under Holm; test 1 (NN3 vs train_mean) not rejected.
+**Verdict (D045 as amended by D047, computed mechanically): does not replicate.** Primary: NN3 R²_oos 0.481%, 95% CI [-0.171, 1.123] (does not exclude zero). Confirmatory family: 1 of 7 with p ≤ 0.05 (all needed for 'replicates'); 1 rejected under Holm (descriptive); test 1 (NN3 vs train_mean) not rejected.
 
 ## Pre-specified tests (D045/D047; one-sided p; ΔR² with month-block bootstrap CI)
 

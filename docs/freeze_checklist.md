@@ -16,8 +16,8 @@ operational list only.
       (`scripts/check_bit_identity.py`; NN arms concurrent vs earlier serial); a second launch
       logged 18 `reused` events and 0 refits (D044 crash rule end to end). The diff from `01f0936`
       to the tag is report, launcher, tests and docs only (D047).
-- [ ] `final_report.py --rehearsal` runs at the candidate commit and prints a verdict (last run at
-      `0555155` before the D048 change; re-run at the tag candidate).
+- [x] `final_report.py --rehearsal` ran at `04d38e7` (D048 code) and printed a verdict:
+      "does not replicate" on 1975–1986 (`results/final_report_rehearsal.md`).
 
 ## Determinism (D044)
 - [x] LightGBM: `deterministic=True`, `force_row_wise=True`, `num_threads=8`, `seed=0` (trees.COMMON).
