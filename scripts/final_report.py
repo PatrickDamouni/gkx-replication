@@ -276,12 +276,12 @@ def main() -> None:
     assert CONFIRMATORY[0] == (HEADLINE, "train_mean", "DM")  # test 1 gates "partially" (D048)
     result = verdict(primary_lo, conf_p, alpha=ALPHA)
     verdict_text = (
-        f"**Verdict (D045 as amended by D047, computed mechanically): {result}.** Primary: {HEADLINE} R²_oos "
+        f"**Verdict (D048, computed mechanically): {result}.** Primary: {HEADLINE} R²_oos "
         f"{100 * primary:.3f}%, 95% CI [{100 * primary_lo:.3f}, {100 * primary_hi:.3f}] "
-        f"({'excludes' if primary_lo > 0 else 'does not exclude'} zero). Confirmatory family: "
-        f"{sum(p <= ALPHA for p in conf_p)} of {len(conf_p)} with p ≤ {ALPHA} (all needed for "
-        f"'replicates'); {sum(rejected)} rejected under Holm (descriptive); test 1 ({HEADLINE} vs train_mean) "
-        f"{'rejected' if rejected[0] else 'not rejected'}."
+        f"({'excludes' if primary_lo > 0 else 'does not exclude'} zero). Test 1 ({HEADLINE} vs "
+        f"train_mean): p = {conf_p[0]:.4f} (≤ {ALPHA} needed for 'partially replicates'). "
+        f"Confirmatory family: {sum(p <= ALPHA for p in conf_p)} of {len(conf_p)} with "
+        f"p ≤ {ALPHA} (all needed for 'replicates'); {sum(rejected)} survive Holm (descriptive)."
     )
 
     gkx = pd.read_csv("paper/gkx_table1.csv").set_index("sample")
