@@ -1,4 +1,4 @@
-"""Phase 5 (D050): the only code that opens the sealed holdout.
+"""Phase 5 (D050): the code that opens the sealed holdout, with the scripts that call it.
 
 Every sealed input is sha256-checked before it is read. The holdout panel holds return months
 >= 201701 only and is appended to the frozen panel, so every pre-2017 row reaches the models
@@ -8,6 +8,7 @@ equity and macro values live in the *pre-2017* files (datashare splits on signal
 """
 
 import hashlib
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -15,10 +16,10 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from gkx.align import align, next_month
+from gkx.datashare import prev_month
 from gkx.panel import HOLDOUT_START, load_panel
 from gkx.preprocess import rank_normalize
 
-LAST_PRE = HOLDOUT_START - 100 + 11  # 201612: the signal month of the first holdout return month
 FROZEN_PANEL = Path("data/processed/panel_datashare.parquet")
 FROZEN_PANEL_SHA = "dfffda9aada2ddddbd9a74ecf1acdabaa91ea74f40f38f039a83b796ec1d56fc"  # D044
 HOLDOUT_PANEL = Path("data/processed/panel_holdout.parquet")
@@ -36,6 +37,46 @@ SEALED = {
 CRSP_HOLDOUT = Path("data/sealed/crsp_returns_holdout.parquet")
 # Set from the one-time pull (scripts/pull_crsp_holdout.py --pull) before freeze-v2; D050 §3.
 CRSP_HOLDOUT_SHA = "unset: pull not yet run"
+
+
+REPO = Path(__file__).resolve().parents[2]
+ALLOWED_TAGS = ("freeze-v2", "freeze-v2.1")  # D050 §7: one fix at most
+# Annotated tag whose message is the holdout panel sha256; pushed before any holdout fit.
+LOCK_TAG = "phase5-panel"
+
+
+class FreezeError(Exception):
+    """Holdout code run from anything but a clean, tagged freeze-v2 checkout."""
+
+
+def _git(*args: str) -> str:
+    out = subprocess.run(["git", *args], cwd=REPO, capture_output=True, text=True, check=False)
+    if out.returncode != 0:
+        raise FreezeError(f"git {' '.join(args)} failed: {out.stderr.strip()}")
+    return out.stdout.strip()
+
+
+def require_freeze_v2() -> str:
+    """The tag on HEAD (freeze-v2 or freeze-v2.1) with a clean tree outside results/, or raise.
+
+    Called before anything reads sealed data or holdout predictions (D050 §6-7, council 15)."""
+    tags = [t for t in _git("tag", "--points-at", "HEAD").split() if t in ALLOWED_TAGS]
+    if not tags:
+        raise FreezeError(f"HEAD carries none of {ALLOWED_TAGS}")
+    if _git("status", "--porcelain", "--", ".", ":!results"):
+        raise FreezeError("uncommitted changes outside results/")
+    return max(tags)
+
+
+def require_published_lock(lock: Path = PANEL_LOCK) -> str:
+    """The lock's sha256, which must equal the message of the pushed annotated tag phase5-panel."""
+    digest = lock.read_text().split()[0]
+    message = _git("tag", "-l", "--format=%(contents)", LOCK_TAG).strip()
+    if digest not in message.split():
+        raise FreezeError(f"tag {LOCK_TAG} does not carry the holdout panel sha256 {digest}")
+    if not _git("ls-remote", "--tags", "origin", f"refs/tags/{LOCK_TAG}"):
+        raise FreezeError(f"tag {LOCK_TAG} is not pushed to origin")
+    return digest
 
 
 class HashMismatchError(Exception):
@@ -86,6 +127,13 @@ def build_panel_through(
     )
 
 
+def _months(start: int, end: int) -> list[int]:
+    out = [start]
+    while out[-1] < end:
+        out.append(int(next_month(pd.Series([out[-1]]))[0]))
+    return out
+
+
 def build_holdout_panel(
     ds_pre: pd.DataFrame,
     ds_hold: pd.DataFrame,
@@ -94,22 +142,45 @@ def build_holdout_panel(
     macro_pre: pd.DataFrame,
     macro_hold: pd.DataFrame,
     char_cols: list[str],
+    first_return: int = HOLDOUT_START,
 ) -> pd.DataFrame:
-    """Rows for return months 201701 → the last month with characteristics, macro and CRSP returns.
+    """Return months `first_return` → the last month with characteristics, macro and a CRSP return.
 
-    Signal month 201612 comes from the pre-2017 files; later signal months from the sealed ones.
-    Pre-2017 CRSP (December-2016 market equity) always comes from the frozen file (D050 §3).
+    The signal month before `first_return` comes from the "pre" files (for the real holdout: the
+    pre-2017 files, including December-2016 market equity, D050 §3); later months from the "hold"
+    files. `first_return` exists so the same code can be rehearsed on real pre-2017 data with 2016
+    playing the holdout (scripts/build_panel_holdout.py --verify-mirror). Fails rather than build
+    an empty, gappy or NaN-macro panel.
     """
-    chars = pd.concat([ds_pre[ds_pre["yyyymm"] == LAST_PRE], ds_hold], ignore_index=True)
-    crsp = pd.concat(
-        [crsp_pre[crsp_pre["yyyymm"] == LAST_PRE], crsp_hold[crsp_hold["yyyymm"] >= HOLDOUT_START]],
+    last_pre = int(prev_month(pd.Series([first_return]))[0])
+    for name, df in (("characteristics", ds_pre), ("CRSP", crsp_pre), ("macro", macro_pre)):
+        if not (df["yyyymm"] == last_pre).any():
+            raise ValueError(f"pre-holdout {name} file has no rows for signal month {last_pre}")
+    chars = pd.concat(
+        [ds_pre[ds_pre["yyyymm"] == last_pre], ds_hold[ds_hold["yyyymm"] > last_pre]],
         ignore_index=True,
     )
-    macro = pd.concat([macro_pre[macro_pre["yyyymm"] == LAST_PRE], macro_hold], ignore_index=True)
+    crsp = pd.concat(
+        [crsp_pre[crsp_pre["yyyymm"] == last_pre], crsp_hold[crsp_hold["yyyymm"] > last_pre]],
+        ignore_index=True,
+    )
+    macro = pd.concat(
+        [macro_pre[macro_pre["yyyymm"] == last_pre], macro_hold[macro_hold["yyyymm"] > last_pre]],
+        ignore_index=True,
+    )
+    with_return = crsp.loc[(crsp["yyyymm"] > last_pre) & crsp["ret_excess"].notna(), "yyyymm"]
+    if with_return.empty:
+        raise ValueError("no CRSP returns after the boundary")
     last_signal = min(int(chars["yyyymm"].max()), int(macro["yyyymm"].max()))
-    through = min(int(next_month(pd.Series([last_signal]))[0]), int(crsp["yyyymm"].max()))
+    through = min(int(next_month(pd.Series([last_signal]))[0]), int(with_return.max()))
     panel = build_panel_through(chars, crsp, macro, char_cols, ["sic2"], through)
-    panel = panel[panel["yyyymm"] >= HOLDOUT_START]
+    panel = panel[panel["yyyymm"] >= first_return]
+    months = sorted(int(m) for m in panel["yyyymm"].unique())
+    if not months or months != _months(first_return, through):
+        raise ValueError(f"holdout months are not contiguous from {first_return} to {through}")
+    macro_cols = [c for c in panel.columns if c.startswith("m_")]
+    if panel[macro_cols].isna().any().any():
+        raise ValueError("holdout rows have missing macro predictors")
     return panel.sort_values(["yyyymm", "permno"]).reset_index(drop=True)
 
 
