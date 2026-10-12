@@ -746,3 +746,43 @@ printed for the holdout (declared uninformative in advance), and no decay ratio.
 **10. Single look.** A "look" is any metric computed on holdout *test-month* predictions. It happens
 once: `phase5_report.py` runs after all 18 holdout runs finish from `freeze-v2`. Until then progress
 is read only as counts of `fold_done` rows (they carry validation scores on 2017+ months).
+
+## D051 — How freeze-v2 implements D050 (council 15, 2026-10-12, before the CRSP pull and before any holdout read)
+Fixed now so nothing is decided after the look. Nothing here changes H1, its reading or the models.
+- **Diff from `freeze-v1`:** `align.py` (`through=`) and `walk_forward.py` (`allow_holdout=`) only,
+  both with seal-keeping defaults; `gkx/crsp.py` stays byte-identical (the date-bounded queries live
+  in `scripts/pull_crsp_holdout.py` with bound parameters); new `gkx/holdout.py` and five scripts.
+  `tests/test_freeze_v2.py` enforces this, and that no test file present at `freeze-v1` changed.
+- **Gate, in Python and in the launcher:** sealed data and holdout predictions are only touched
+  from a clean checkout of exactly `freeze-v2` or `freeze-v2.1` (`holdout.require_freeze_v2`).
+- **Test months (D050 §2, made exact):** return months from 201701 to the last month that has
+  characteristics, macro values and a non-missing CRSP excess return, contiguous, with no missing
+  macro predictor; the builder refuses otherwise. (Macro ends 2025-12, so the macro cap should not
+  bind; it is stated because the code applies it.)
+- **"≤ 201612 rows equal the frozen panel" (D050 §7):** met by construction: the holdout panel holds
+  return months ≥ 201701 only, and `load_merged` reads every earlier row from the sha-checked frozen
+  panel through the same call `run_test.py` used. The unseal builder itself was rehearsed on real
+  pre-2017 data with 2016 playing the holdout (`build_panel_holdout.py --verify-mirror`): it
+  reproduced the frozen panel's 68,730 2016 rows exactly.
+- **Panel lock:** after `--build`, the holdout panel and `results/holdout_panel.sha256` are made
+  read-only and the panel's sha256 is published as the message of annotated tag `phase5-panel`,
+  pushed to origin, before any holdout fit. Every holdout invocation logs a `phase5_inputs` ledger
+  row with the panel hash it used; the report refuses unless all of them equal the published one.
+- **One launcher at a time** (`results/.phase5.lock`); NN specs run serially.
+- **`freeze-v2.1` (D050 §7, made exact):** only for a code bug found after unseal; the refit at
+  `v2.1` governs; any model whose `v2` holdout predictions differ from its `v2.1` predictions is
+  listed in the report header. No `freeze-v2.2`.
+- **The look:** `phase5_report.py --holdout` checks every input first (tag, clean tree, published
+  lock, one panel hash, `-check2016` evidence at the same commit, canary fold 2016, no NaN), then
+  computes, writes `results/phase5_report.md` once (refuses if it exists) and appends a
+  `phase5_look` ledger row. The 1987–2016 comparison values are recomputed from the `46c1584`
+  predictions by the same code; the dry run (`results/phase5_report_dryrun.md`) exercises that
+  whole path on 1987–2016 and reproduces H1 t = 4.569 and test 1 t = 2.213.
+- **Runbook:** (1) `pull_crsp_holdout.py --check`; (2) `--pull`; its sha256 goes into
+  `holdout.CRSP_HOLDOUT_SHA` and a decision entry, committed; (3) at that commit: dry run and
+  `run_holdout.sh --check2016`, then `phase5_report.py --check2016` must show 18/18; (4) tag and push
+  `freeze-v2`; (5) the user's go-ahead; (6) from a detached `git checkout freeze-v2`:
+  `build_panel_holdout.py --build`, tag and push `phase5-panel`, `run_holdout.sh --holdout`,
+  `phase5_report.py --holdout`; (7) only then commit results (the ledger, logs and report) on
+  `master`. Nothing under `results/` is committed or pushed between (5) and (7): the ledger carries
+  validation scores on 2017+ months.
