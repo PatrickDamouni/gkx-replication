@@ -13,7 +13,7 @@ Replication and post-publication test of Gu, Kelly & Xiu (2020),
 | 0. Setup + pre-registration | done (`prereg-v1`) |
 | 1. Data pipeline + leakage checks | done: CRSP + GKX datashare panel, sealed 2017+ holdout, OSAP map (D001–D026) |
 | 2. Baselines | done: OLS-3, OLS-all (+Huber), training-mean benchmark |
-| 3. Replication (linear, trees, NNs; walk-forward, multi-seed) | all 18 variants rehearsed on 1975–1986; frozen run list, verdict rule (D045) and launcher ready; single 1987–2016 run pending the `freeze-v1` tag |
+| 3. Replication (linear, trees, NNs; walk-forward, multi-seed) | done: single 1987–2016 run from `freeze-v1` (2026-10-11); pre-specified verdict under D048 **partially replicates** — 5-seed NN3 ensemble R² 0.454% [0.165, 0.733] beats a training-mean forecast (p = 0.013, does not survive Holm); GKX's model ranking not reproduced. [`results/final_report.md`](results/final_report.md). Primary data is GKX's own characteristics (D022), not an independent build |
 | 4. Ablations + error analysis (pre-2017 only) | — |
 | 5. Unseal post-publication holdout, final test, write-up | — |
 
