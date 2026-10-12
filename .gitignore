@@ -13,3 +13,5 @@ data/sealed/
 !paper/*.csv
 .claude/settings.local.json
 .claude/council-cache/
+results/.phase5.lock/
+results/*.partial

@@ -2,10 +2,11 @@
 # Phase 5 launcher (D050). From the repo root:
 #     nohup bash scripts/run_holdout.sh --check2016 >/dev/null 2>&1 &   # pre-tag, any clean commit
 #     git checkout freeze-v2 && nohup bash scripts/run_holdout.sh --holdout >/dev/null 2>&1 &
-# Linear, then trees, then the six NN specs one at a time (concurrent NN processes are refused in
-# Phase 5: ~13-14 GB each on a 24 GB machine). A crash: re-run the same command at the same commit
-# (D044: finished runs reused, unfinished resumed). Progress: timestamps in the log and
-# `grep -c fold_done results/trials.jsonl` only — never ledger rows (they carry 2017+ validation scores).
+# Linear, then trees, then the six NN specs one at a time; one launcher at a time (results/.phase5.lock;
+# ~13-14 GB per NN process on a 24 GB machine, D050 §4). A crash: wait for this launcher to exit,
+# then re-run the same command at the same commit (D044: finished runs reused, unfinished resumed).
+# Progress: timestamps in the log and `grep -c fold_done results/trials.jsonl` only — never ledger
+# rows (they carry 2017+ validation scores). The Python code repeats every holdout gate.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -16,16 +17,22 @@ mkdir -p results
 LOG=results/${NAME}_run.log
 refuse() { echo "$(date '+%F %T') refusing: $*" | tee -a "$LOG" >&2; exit 1; }
 
-[[ "${NN_CONCURRENT:-0}" == 1 ]] && refuse "concurrent NN processes are not allowed in Phase 5 (D050 §4)"
-test -z "$(git status --porcelain -- . ':!results')" || refuse "uncommitted changes"
+mkdir results/.phase5.lock 2>/dev/null || refuse "another Phase 5 launcher is running (results/.phase5.lock)"
+trap 'rmdir results/.phase5.lock 2>/dev/null || true' EXIT
+
+STATUS=$(git status --porcelain -- . ':!results') || refuse "git status failed"
+[[ -z "$STATUS" ]] || refuse "uncommitted changes"
 FROZEN_SHA=dfffda9aada2ddddbd9a74ecf1acdabaa91ea74f40f38f039a83b796ec1d56fc  # D044
-[[ "$(shasum -a 256 data/processed/panel_datashare.parquet | cut -d' ' -f1)" == "$FROZEN_SHA" ]] \
-  || refuse "frozen panel sha256 differs from D044"
+GOT=$(shasum -a 256 data/processed/panel_datashare.parquet | cut -d' ' -f1) || refuse "cannot hash the frozen panel"
+[[ "$GOT" == "$FROZEN_SHA" ]] || refuse "frozen panel sha256 differs from D044"
 if [[ $NAME == holdout ]]; then
-  git tag --points-at HEAD | grep -qE '^freeze-v2(\.[0-9]+)?$' || refuse "HEAD is not tag freeze-v2"
-  [[ -f results/holdout_panel.sha256 ]] || refuse "no holdout panel lock (run build_panel_holdout.py --build)"
-  [[ "$(shasum -a 256 data/processed/panel_holdout.parquet | cut -d' ' -f1)" == "$(cut -d' ' -f1 results/holdout_panel.sha256)" ]] \
-    || refuse "holdout panel differs from its lock"
+  TAGS=$(git tag --points-at HEAD) || refuse "git tag failed"
+  grep -qxE 'freeze-v2(\.1)?' <<<"$TAGS" || refuse "HEAD is not tag freeze-v2 or freeze-v2.1"
+  [[ -f results/holdout_panel.sha256 && -f data/processed/panel_holdout.parquet ]] \
+    || refuse "no holdout panel or lock (run build_panel_holdout.py --build)"
+  WANT=$(cut -d' ' -f1 results/holdout_panel.sha256)
+  GOT=$(shasum -a 256 data/processed/panel_holdout.parquet | cut -d' ' -f1) || refuse "cannot hash the holdout panel"
+  [[ -n "$WANT" && "$GOT" == "$WANT" ]] || refuse "holdout panel differs from its lock"
 fi
 df -k . | awk 'NR==2 && $4 < 30*1024*1024 { exit 1 }' || refuse "< 30 GB free disk"
 

@@ -1,10 +1,13 @@
 """Phase 5 report (D050 §8-10): one confirmatory test (H1), everything else deciding nothing.
 
-  --dry-run    on the freeze-v1 1987-2016 predictions: must reproduce H1 t = 4.569 and test 1
-               t = 2.213 with the frozen functions (D050 §6). Writes nothing.
+  --dry-run    rehearses the full report path on the freeze-v1 1987-2016 predictions (playing the
+               holdout) and must reproduce H1 t = 4.569 and test 1 t = 2.213 with the frozen
+               functions (D050 §6). Writes results/phase5_report_dryrun.md.
   --check2016  the pre-tag `-check2016` runs must equal the freeze-v1 2016 predictions exactly.
-  --holdout    the single look: `-holdout` runs from freeze-v2, canary fold 2016 checked first,
-               then results/phase5_report.md (H1 and its pre-written reading first).
+  --holdout    the single look, from a clean freeze-v2(.1) checkout: every input is checked first
+               (tag, clean tree, published panel lock, one panel hash across all fits, -check2016
+               evidence, canary fold 2016, no NaN); only then are holdout numbers computed, written
+               once to results/phase5_report.md (refuses if it exists) and the look logged.
 
 Usage: uv run --locked python scripts/phase5_report.py --dry-run|--check2016|--holdout
 """
@@ -13,26 +16,38 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from gkx.evaluate import LEDGER
-from gkx.holdout import FROZEN_PANEL, PANEL_LOCK
+from gkx.holdout import (
+    ALLOWED_TAGS,
+    FROZEN_PANEL,
+    HOLDOUT_PANEL,
+    require_freeze_v2,
+    require_published_lock,
+    sha256,
+)
 from gkx.metrics import BLOCK, clark_west, diebold_mariano, paired_r2_ci, r2_oos
 from gkx.panel import HOLDOUT_START, load_panel
 from gkx.report import demeaned_frame
 from gkx.walk_forward import walk_forward
 
 REPO = Path(__file__).resolve().parents[1]
-FREEZE_V1 = "46c1584"  # the 1987-2016 runs, loaded by commit (D050 §6)
+# The 1987-2016 runs, loaded by commit (D050 §6). This is the commit's short sha as the ledger
+# records it; `git rev-parse --short freeze-v1` prints the annotated tag object instead.
+FREEZE_V1 = "46c1584"
 KEYS = ["yyyymm", "permno"]
 H1 = ("NN3-dm", "train_mean")
 EXPECTED_DRY = {"H1": 4.569, "test 1": 2.213}
 OUT = REPO / "results/phase5_report.md"
+DRY_OUT = REPO / "results/phase5_report_dryrun.md"
 
 
 def frozen_report():
@@ -49,9 +64,13 @@ def _git(*args: str) -> str:
     ).stdout.strip()
 
 
+def _rows(ledger: Path) -> list[dict]:
+    return [json.loads(line) for line in ledger.read_text().splitlines() if line.strip()]
+
+
 def runs(tag: str, models: list[str], sha: str | None = None, ledger: Path = LEDGER) -> dict:
     """One finished run per model with name `<model>-<tag>` (and commit `sha` if given)."""
-    rows = [json.loads(line) for line in ledger.read_text().splitlines() if line.strip()]
+    rows = _rows(ledger)
     started = {r["run_id"]: r for r in rows if r["event"] == "started"}
     found: dict[str, list] = {m: [] for m in models}
     for r in rows:
@@ -106,7 +125,19 @@ def frame(preds: dict[str, pd.DataFrame], models: list[str]) -> pd.DataFrame:
         if len(p) != len(base) or not np.array_equal(p[KEYS].to_numpy(), base[KEYS].to_numpy()):
             raise SystemExit(f"{m}: prediction rows do not line up")
         base[m] = p["pred"].to_numpy()
+    if base[["target", *models]].isna().any().any():
+        raise SystemExit("NaN in targets or predictions: no report")
     base["zero"] = 0.0
+    return base
+
+
+def with_training_mean(base: pd.DataFrame, rep, folds) -> pd.DataFrame:
+    if max(f.train[1] for f in folds) >= HOLDOUT_START:
+        raise SystemExit("a training window reaches the holdout")
+    panel = load_panel(FROZEN_PANEL, columns=["yyyymm", "target"])
+    base["train_mean"] = rep._training_mean(base, panel, folds).to_numpy()
+    if base["train_mean"].isna().any():
+        raise SystemExit("training-mean benchmark missing for some rows")
     return base
 
 
@@ -132,10 +163,10 @@ def h1_and_test1(base: pd.DataFrame) -> dict[str, tuple[float, float]]:
 
 
 def analyse(base: pd.DataFrame, models: list[str], confirmatory: list) -> dict[str, pd.DataFrame]:
-    """Every holdout number: H1, per-model R², the seven D045 tests, two secondary tests."""
+    """Every number of the report: per-model R², the seven D045 tests, H1 and two secondary tests."""
     per_model = []
     for m in [*models, "train_mean"]:
-        d, lo, hi = paired_r2_ci(base, "zero", m)
+        _, lo, hi = paired_r2_ci(base, "zero", m)
         per_model.append(
             {
                 "model": m,
@@ -145,39 +176,102 @@ def analyse(base: pd.DataFrame, models: list[str], confirmatory: list) -> dict[s
         )
     tests = []
     for a, b, kind in confirmatory:
-        t, p = (
-            clark_west(base, small=b, big=a)
-            if kind == "CW"
-            else diebold_mariano(base, base=b, candidate=a)
-        )
+        if kind == "CW":
+            t, p = clark_west(base, small=b, big=a)
+        else:
+            t, p = diebold_mariano(base, base=b, candidate=a)
         d, lo, hi = paired_r2_ci(base, b, a)
-        tests.append({"candidate": a, "vs": b, "test": kind, "t": t, "p (one-sided)": p,
-                      "ΔR2 %": 100 * d, "95% CI": f"[{100 * lo:.3f}, {100 * hi:.3f}]"})  # fmt: skip
+        tests.append(
+            {
+                "candidate": a,
+                "vs": b,
+                "test": kind,
+                "t": t,
+                "p (one-sided)": p,
+                "ΔR2 %": 100 * d,
+                "95% CI": f"[{100 * lo:.3f}, {100 * hi:.3f}]",
+            }
+        )
+    h1_t, h1_p = diebold_mariano(base, base=H1[1], candidate=H1[0])
     t, p = diebold_mariano(
         demeaned_frame(base, ["NN3-dm", "ENet+H"]), base="ENet+H", candidate="NN3-dm"
     )
     t2, p2 = diebold_mariano(base, base="train_mean", candidate="ENet+H")
-    secondary = pd.DataFrame(
+    other = pd.DataFrame(
         [
+            {"test": "H1: NN3-dm vs constant (confirmatory)", "t": h1_t, "p (one-sided)": h1_p},
             {"test": "NN3-dm vs ENet+H, within-month errors", "t": t, "p (one-sided)": p},
             {"test": "ENet+H vs constant", "t": t2, "p (one-sided)": p2},
         ]
     )
-    return {
-        "per_model": pd.DataFrame(per_model),
-        "tests": pd.DataFrame(tests),
-        "secondary": secondary,
-    }
+    tests = pd.DataFrame(tests)
+    for df in (tests, other):
+        if not np.isfinite(df[["t", "p (one-sided)"]].to_numpy(dtype=float)).all():
+            raise SystemExit("non-finite test statistic: no report")
+    return {"per_model": pd.DataFrame(per_model), "tests": tests, "other": other}
+
+
+def render(now: dict, before: dict, months: int, header: str) -> tuple[str, float, float]:
+    """The report text: H1 and its reading first, then every number beside its 1987–2016 value."""
+    h1 = now["other"].iloc[0]
+    t, p = float(h1["t"]), float(h1["p (one-sided)"])
+    old = {"t": "1987–2016 t", "p (one-sided)": "1987–2016 p", "R2 %": "1987–2016 R2 %"}
+    per_model = now["per_model"].merge(
+        before["per_model"][["model", "R2 %"]].rename(columns=old), on="model"
+    )
+    tests = now["tests"].merge(
+        before["tests"][["candidate", "vs", "t", "p (one-sided)"]].rename(columns=old),
+        on=["candidate", "vs"],
+    )
+    other = now["other"].merge(before["other"].rename(columns=old), on="test")
+
+    def md(df: pd.DataFrame) -> str:
+        return df.round(4).to_markdown(index=False)
+
+    before_t = float(before["other"].iloc[0]["t"])
+    text = (
+        header
+        + "## H1 — the one confirmatory test\n\nNN3-dm vs the constant, one-sided Diebold–Mariano: "
+        + f"t = {t:.3f}, p = {p:.4f} ({'reject' if p <= 0.05 else 'not rejected'} at α = 0.05); "
+        + f"1987–2016: t = {before_t:.3f}.\n\n**{reading(p, months)}**\n\n"
+        + "## Reported, deciding nothing\n\n"
+        + f"Bootstrap CIs use {BLOCK}-month blocks over {months} months, so they are coarse. "
+        + "No D048 label and no decay ratio are reported (D050 §9).\n\n### R² by model\n\n"
+        + md(per_model)
+        + "\n\n### The seven D045 tests (test 1 had ≈ 23% power at 60 months)\n\n"
+        + md(tests)
+        + "\n\n### H1 and secondary tests\n\n"
+        + md(other)
+        + "\n"
+    )
+    return text, t, p
+
+
+def _frozen_side(rep) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
+    preds = predictions(runs("test", rep.MODELS, FREEZE_V1))
+    return preds, with_training_mean(frame(preds, rep.MODELS), rep, walk_forward())
+
+
+def _write_once(path: Path, text: str) -> None:
+    tmp = path.with_suffix(".partial")
+    tmp.write_text(text)
+    os.replace(tmp, path)
 
 
 def dry_run(rep) -> int:
-    selected = runs("test", rep.MODELS, FREEZE_V1)
-    base = frame(predictions(selected), rep.MODELS)
-    panel = load_panel(FROZEN_PANEL, columns=["yyyymm", "target"])
-    base["train_mean"] = rep._training_mean(base, panel, walk_forward()).to_numpy()
+    _, base = _frozen_side(rep)
+    before = analyse(base, rep.MODELS, rep.CONFIRMATORY)
+    header = (
+        "# Phase 5 report — DRY RUN on 1987–2016 (not the holdout)\n\n"
+        f"Code `{_git('rev-parse', '--short', 'HEAD')}`; the freeze-v1 test predictions play the "
+        "holdout, so every 1987–2016 column equals its own value.\n\n"
+    )
+    text, _, _ = render(before, before, int(base["yyyymm"].nunique()), header)
     got = {k: round(v[0], 3) for k, v in h1_and_test1(base).items()}
     ok = got == EXPECTED_DRY
-    print(f"dry run on 1987-2016: {got}, expected {EXPECTED_DRY}: {'OK' if ok else 'MISMATCH'}")
+    _write_once(DRY_OUT, text)
+    status = "OK" if ok else "MISMATCH"
+    print(f"dry run on 1987-2016: {got}, expected {EXPECTED_DRY}: {status} -> {DRY_OUT}")
     return 0 if ok else 1
 
 
@@ -187,67 +281,102 @@ def check2016(rep) -> int:
     dirty = [m for m, (st, _) in selected.items() if st["git_dirty"]]
     if dirty:
         raise SystemExit(f"dirty -check2016 runs: {dirty}")
-    frozen = predictions(runs("test", rep.MODELS, FREEZE_V1))
-    bad = canary(predictions(selected), frozen)
+    bad = canary(predictions(selected), predictions(runs("test", rep.MODELS, FREEZE_V1)))
+    n = len(rep.MODELS)
     print(
-        f"2016 fold at {head}: {18 - len(bad)}/18 bit-identical to freeze-v1"
+        f"2016 fold at {head}: {n - len(bad)}/{n} bit-identical to freeze-v1"
         + (f"; differ: {bad}" if bad else "")
     )
     return 1 if bad else 0
 
 
+def _check_inputs(rep, sha: str, digest: str) -> None:
+    """Every holdout run comes from an allowed tag, and every fit used the published panel."""
+    allowed = {
+        _git("rev-parse", "--short", f"{t}^{{commit}}")
+        for t in ALLOWED_TAGS
+        if _git("tag", "-l", t)
+    }
+    rows = _rows(LEDGER)
+    started = [r for r in rows if r["event"] == "started" and r["name"].endswith("-holdout")]
+    stray = sorted({r["git_sha"] for r in started} - allowed)
+    if stray:
+        raise SystemExit(f"-holdout runs from commits outside {ALLOWED_TAGS}: {stray}")
+    used = {
+        r["holdout_panel_sha256"]
+        for r in rows
+        if r["event"] == "phase5_inputs" and r["git_sha"] == sha
+    }
+    if used != {digest}:
+        raise SystemExit(f"fits used holdout panels {used}, not only the published {digest}")
+    runs("check2016", rep.MODELS, sha)  # the pre-tag evidence exists at this exact commit
+
+
+def _superseded(rep, preds: dict[str, pd.DataFrame]) -> list[str]:
+    """Under freeze-v2.1 (D051): freeze-v2 holdout runs that the refit did not reproduce."""
+    v2 = _git("rev-parse", "--short", "freeze-v2^{commit}")
+    out = []
+    for m in rep.MODELS:
+        try:
+            old = predictions(runs("holdout", [m], v2))[m]
+        except SystemExit:
+            continue
+        if not old.equals(preds[m]):
+            out.append(m)
+    return out
+
+
 def holdout(rep) -> int:
-    tags = [t for t in _git("tag", "--list", "freeze-v2*").split() if t]
-    if not tags:
-        raise SystemExit("no freeze-v2 tag")
-    tag = max(tags, key=lambda t: [int(x) for x in t.removeprefix("freeze-v").split(".")])
-    sha = _git("rev-parse", f"{tag}^{{commit}}")
+    # 1. Gates and inputs: nothing about the holdout is computed until all of these pass.
+    tag = require_freeze_v2()
+    if OUT.exists():
+        raise SystemExit(f"{OUT} exists: the look happens once (D050 §10)")
+    digest = require_published_lock()
+    if sha256(HOLDOUT_PANEL) != digest:
+        raise SystemExit("holdout panel differs from its published lock")
+    sha = _git("rev-parse", "--short", "HEAD")
+    _check_inputs(rep, sha, digest)
     selected = runs("holdout", rep.MODELS, sha)
     bad_runs = [m for m, (st, _) in selected.items() if st["git_dirty"] or not st["test_window"]]
-    changed = _git(
-        "diff", "--name-only", sha, "HEAD", "--", "src", "scripts", "pyproject.toml", "uv.lock"
-    )
-    if bad_runs or changed:
-        raise SystemExit(f"refused: dirty runs {bad_runs} / code changed since {tag}: {changed!r}")
+    if bad_runs:
+        raise SystemExit(f"dirty or non-test holdout runs: {bad_runs}")
     preds = predictions(selected)
-    bad = canary(preds, predictions(runs("test", rep.MODELS, FREEZE_V1)))
+    frozen_preds, frozen_base = _frozen_side(rep)
+    bad = canary(preds, frozen_preds)
     if bad:
         raise SystemExit(f"canary fold 2016 differs from freeze-v1 for {bad}: no report (D050 §5)")
+    superseded = _superseded(rep, preds) if tag == "freeze-v2.1" else []
     preds = {m: p[p["yyyymm"] >= HOLDOUT_START].reset_index(drop=True) for m, p in preds.items()}
     base = frame(preds, rep.MODELS)
     last_year = int(base["yyyymm"].max()) // 100
     folds = walk_forward(first_test_year=2017, last_test_year=last_year, allow_holdout=True)
-    panel = load_panel(FROZEN_PANEL, columns=["yyyymm", "target"])  # training windows end <= 2008
-    base["train_mean"] = rep._training_mean(base, panel, folds).to_numpy()
-    months = base["yyyymm"].nunique()
-    t, p = h1_and_test1(base)["H1"]
-    res = analyse(base, rep.MODELS, rep.CONFIRMATORY)
-    before = pd.read_csv(REPO / "results/final_report.csv").set_index("model")["R2 %"]
-    res["per_model"]["1987–2016 R2 %"] = res["per_model"]["model"].map(before)
-    before_t = pd.read_csv(REPO / "results/final_report_tests.csv")
-    res["tests"]["1987–2016 p"] = before_t[before_t["role"] == "confirmatory"][
-        "p (one-sided)"
-    ].to_numpy()
-    md = lambda df: df.round(4).to_markdown(index=False)
-    OUT.write_text(
+    base = with_training_mean(base, rep, folds)
+    before = analyse(frozen_base, rep.MODELS, rep.CONFIRMATORY)
+    months = int(base["yyyymm"].nunique())
+    n = len(rep.MODELS)
+    header = (
         "# Phase 5 report — sealed holdout, Arm A (D050)\n\n"
-        f"Holdout predictions from `{tag}` (`{sha[:7]}`); analysis at `{_git('rev-parse', '--short', 'HEAD')}`; "
-        f"holdout panel {PANEL_LOCK.read_text().split()[0][:12]}…; test months "
-        f"{base['yyyymm'].min()}–{base['yyyymm'].max()} ({months}). Canary fold 2016: 18/18 "
-        "bit-identical to freeze-v1.\n\n"
-        f"## H1 — the one confirmatory test\n\nNN3-dm vs the constant, one-sided Diebold–Mariano: "
-        f"t = {t:.3f}, p = {p:.4f} ({'reject' if p <= 0.05 else 'not rejected'} at α = 0.05).\n\n"
-        f"**{reading(p, months)}**\n\n"
-        "## Reported, deciding nothing\n\n"
-        f"Bootstrap CIs use {BLOCK}-month blocks over {months} months, so they are coarse. No D048 "
-        "label and no decay ratio are reported (D050 §9).\n\n### R² by model\n\n"
-        + md(res["per_model"])
-        + "\n\n### The seven D045 tests (test 1 had ≈ 23% power at 60 months)\n\n"
-        + md(res["tests"])
-        + "\n\n### Secondary\n\n"
-        + md(res["secondary"])
-        + "\n"
+        f"Holdout predictions from `{tag}` (`{sha}`); holdout panel `{digest[:12]}…` (published "
+        f"as tag phase5-panel); test months {base['yyyymm'].min()}–{base['yyyymm'].max()} "
+        f"({months}). Canary fold 2016: {n}/{n} bit-identical to freeze-v1."
+        + (f" freeze-v2 runs not reproduced by freeze-v2.1: {superseded}." if superseded else "")
+        + "\n\n"
     )
+    # 2. The look.
+    now = analyse(base, rep.MODELS, rep.CONFIRMATORY)
+    text, t, p = render(now, before, months, header)
+    _write_once(OUT, text)
+    look = {
+        "event": "phase5_look",
+        "timestamp": datetime.now(UTC).isoformat(timespec="seconds"),
+        "tag": tag,
+        "git_sha": sha,
+        "h1_t": t,
+        "h1_p": p,
+        "months": months,
+    }
+    with LEDGER.open("a") as f:
+        f.write(json.dumps(look) + "\n")
     print(f"wrote {OUT}\nH1: t = {t:.3f}, p = {p:.4f}\n{reading(p, months)}")
     return 0
 

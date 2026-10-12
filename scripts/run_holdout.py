@@ -11,11 +11,14 @@ Usage: uv run --locked python scripts/run_holdout.py --check2016|--holdout --fam
 
 import argparse
 import importlib.util
+import json
+import subprocess
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
-from gkx.evaluate import evaluate
-from gkx.holdout import FROZEN_PANEL, load_merged
+from gkx.evaluate import LEDGER, evaluate
+from gkx.holdout import FROZEN_PANEL, load_merged, require_freeze_v2, require_published_lock
 from gkx.panel import load_panel
 from gkx.walk_forward import walk_forward
 
@@ -30,11 +33,35 @@ def frozen_specs(family: str):
     return mod.specs(family)
 
 
-def plan(mode: str):
-    """(panel, folds, tag) for a mode."""
+def _log_inputs(tag: str, digest: str, family: str, only: str) -> None:
+    """One ledger row per holdout invocation: which commit and which panel the fits used."""
+    row = {
+        "event": "phase5_inputs",
+        "timestamp": datetime.now(UTC).isoformat(timespec="seconds"),
+        "tag": tag,
+        "git_sha": subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=REPO,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip(),
+        "holdout_panel_sha256": digest,
+        "family": family,
+        "only": only,
+    }
+    with LEDGER.open("a") as f:
+        f.write(json.dumps(row) + "\n")
+
+
+def plan(mode: str, family: str = "", only: str = ""):
+    """(panel, folds, tag) for a mode. Holdout mode: freeze-v2 gate and published lock first."""
     if mode == "check2016":
         return load_panel(FROZEN_PANEL), walk_forward(first_test_year=2016), "check2016"
+    tag = require_freeze_v2()
+    digest = require_published_lock()
     panel = load_merged()
+    _log_inputs(tag, digest, family, only)
     last_year = int(panel["yyyymm"].max()) // 100
     folds = walk_forward(first_test_year=2016, last_test_year=last_year, allow_holdout=True)
     return panel, folds, "holdout"
@@ -57,7 +84,7 @@ def main() -> None:
             raise SystemExit(f"--only names not in family {args.family}: {sorted(unknown)}")
         chosen = [s for s in chosen if s[0] in only]
 
-    panel, folds, tag = plan("check2016" if args.check2016 else "holdout")
+    panel, folds, tag = plan("check2016" if args.check2016 else "holdout", args.family, args.only)
     for name, features, make, seeds, target, trial in chosen:
         t0 = time.time()
         evaluate(

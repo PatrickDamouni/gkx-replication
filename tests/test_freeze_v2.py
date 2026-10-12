@@ -59,3 +59,14 @@ def test_every_other_change_is_whitelisted():
             assert path in NEW, f"{path} added but not whitelisted (D050 §6)"
         else:
             raise AssertionError(f"{status} {path}: deletions and renames are not allowed")
+
+
+def test_tests_present_at_freeze_v1_are_unmodified():
+    """D050 §6: every freeze-v1 test passes unmodified; new test files are fine."""
+    _diff()  # skips without the tag
+    out = subprocess.run(
+        ["git", "diff", "--name-status", "freeze-v1", "--", "tests"],
+        cwd=REPO, capture_output=True, text=True, check=True,
+    ).stdout  # fmt: skip
+    changed = [line for line in out.splitlines() if not line.startswith("A\t")]
+    assert changed == [], changed

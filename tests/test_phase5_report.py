@@ -109,6 +109,43 @@ def test_analyse_reports_every_section_on_a_synthetic_holdout():
     conf = [("NN3", "train_mean", "DM"), ("NN3", "PCR", "DM"), ("ENet+H", "PCR", "CW")]
     res = mod.analyse(base, models, conf)
     assert list(res["per_model"]["model"]) == [*models, "train_mean"]
-    assert len(res["tests"]) == 3 and len(res["secondary"]) == 2
+    assert len(res["tests"]) == 3 and len(res["other"]) == 3
+    assert res["other"].iloc[0]["test"].startswith("H1")
+    text, _, p1 = mod.render(res, res, 24, "# header\n\n")
+    assert text.startswith("# header") and "## H1" in text and mod.reading(p1, 24) in text
+    assert "1987–2016 t" in text and "1987–2016 R2 %" in text and "D048" in text
     t, p = mod.h1_and_test1(base)["H1"]
     assert t > 2 and p < 0.05  # a planted cross-sectional signal is detected
+
+
+def test_frame_refuses_nan_and_training_windows_may_not_reach_the_holdout():
+    mod = _load()
+    p = _preds([2017], 0).assign(target=0.0, me_lag=1.0)
+    with pytest.raises(SystemExit, match="NaN"):
+        mod.frame({"A": p.assign(pred=np.nan)}, ["A"])
+    from gkx.walk_forward import walk_forward
+
+    late = walk_forward(first_test_year=2030, last_test_year=2030, allow_holdout=True)
+    with pytest.raises(SystemExit, match="reaches the holdout"):
+        mod.with_training_mean(mod.frame({"A": p}, ["A"]), None, late)
+
+
+def test_holdout_inputs_must_come_from_allowed_tags_and_one_published_panel(tmp_path, monkeypatch):
+    mod = _load()
+    ledger = tmp_path / "trials.jsonl"
+    rows = [
+        {"event": "started", "run_id": "1", "name": "A-holdout", "git_sha": "abc1234"},
+        {"event": "phase5_inputs", "git_sha": "abc1234", "holdout_panel_sha256": "f" * 64},
+    ]
+    ledger.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    monkeypatch.setattr(mod, "LEDGER", ledger)
+    monkeypatch.setattr(mod, "_git", lambda *a: {"rev-parse": "abc1234", "tag": "freeze-v2"}[a[0]])
+    monkeypatch.setattr(mod, "runs", lambda *a, **k: {})
+    rep = type("Rep", (), {"MODELS": ["A"]})
+    mod._check_inputs(rep, "abc1234", "f" * 64)
+    with pytest.raises(SystemExit, match="not only the published"):
+        mod._check_inputs(rep, "abc1234", "e" * 64)
+    rows.append({"event": "started", "run_id": "2", "name": "B-holdout", "git_sha": "def5678"})
+    ledger.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    with pytest.raises(SystemExit, match="outside"):
+        mod._check_inputs(rep, "abc1234", "f" * 64)
