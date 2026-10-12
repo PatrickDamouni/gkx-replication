@@ -18,7 +18,7 @@ from scipy.stats import norm
 
 REPO = Path(__file__).resolve().parents[1]
 OUT = REPO / "results/exploratory/phase5_power.md"
-LENGTHS = (48, 60, 96)  # Arm A ≈ 2017–2021 (D025, exact end known only at unseal); Arm B 2017–2024
+LENGTHS = (24, 36, 48, 60, 96)  # Arm A ≈ 2017–2021 (D025, exact end known only at unseal); Arm B 2017–2024
 DECAY = (1.0, 0.5, 0.0)
 BLOCK, DRAWS, SEED, LAGS = 12, 4000, 20261012, 5
 
