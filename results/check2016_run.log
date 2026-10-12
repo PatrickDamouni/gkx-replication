@@ -1,0 +1,180 @@
+2026-10-12 11:03:53 start check2016 phase5-prereg-10-g0541701 0541701
+2026-10-12 11:03:53 family linear
+11:03:55 done OLS-3-check2016 (1s)
+11:03:56 done OLS-3+H-check2016 (1s)
+11:04:01 done OLS-check2016 (5s)
+11:04:09 done OLS+H-check2016 (8s)
+11:04:13 done PCR-check2016 (5s)
+11:04:18 done PLS-check2016 (5s)
+11:04:32 done ENet+H-check2016 (14s)
+11:05:46 done GLM+H-check2016 (74s)
+      113.73 real       104.89 user        11.63 sys
+         10290069504  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6508356  page reclaims
+                 532  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                 117  voluntary context switches
+               74509  involuntary context switches
+           127139588  instructions retired
+            51325046  cycles elapsed
+            12599824  peak memory footprint
+2026-10-12 11:05:46 family trees
+11:07:41 done GBRT+H-check2016 (113s)
+11:09:24 done GBRT+H-dm-check2016 (102s)
+11:15:21 done RF-check2016 (358s)
+11:21:53 done RF-dm-check2016 (392s)
+      966.65 real      5650.31 user       112.25 sys
+         11626430464  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             5284873  page reclaims
+                1008  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                2215  voluntary context switches
+            19425523  involuntary context switches
+           138308028  instructions retired
+            54773273  cycles elapsed
+            12632592  peak memory footprint
+2026-10-12 11:21:53 nn NN1
+11:29:35 done NN1-check2016 (459s)
+      462.05 real      1145.35 user        67.99 sys
+         11150131200  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             1174015  page reclaims
+                3525  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                3573  voluntary context switches
+            14185840  involuntary context switches
+           134885615  instructions retired
+            51265926  cycles elapsed
+            12665336  peak memory footprint
+2026-10-12 11:29:35 nn NN1-dm
+11:36:54 done NN1-dm-check2016 (437s)
+      439.90 real      1088.65 user        65.65 sys
+         11792629760  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             1117379  page reclaims
+                 139  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                3537  voluntary context switches
+            13497284  involuntary context switches
+           134791957  instructions retired
+            50810904  cycles elapsed
+            12681744  peak memory footprint
+2026-10-12 11:36:55 nn NN2
+11:45:10 done NN2-check2016 (493s)
+      495.88 real      1132.53 user        88.12 sys
+         12526878720  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             1170351  page reclaims
+                 279  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                5181  voluntary context switches
+            19549708  involuntary context switches
+           138354035  instructions retired
+            53516084  cycles elapsed
+            12583440  peak memory footprint
+2026-10-12 11:45:11 nn NN2-dm
+11:54:20 done NN2-dm-check2016 (547s)
+      549.39 real      1251.57 user        97.80 sys
+         11529388032  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             1149681  page reclaims
+                 270  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                5173  voluntary context switches
+            21477702  involuntary context switches
+           137604701  instructions retired
+            53590234  cycles elapsed
+            12649000  peak memory footprint
+2026-10-12 11:54:20 nn NN3
+12:03:30 done NN3-check2016 (547s)
+      549.97 real      1184.05 user       107.71 sys
+         11656708096  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             1836503  page reclaims
+                 130  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                5134  voluntary context switches
+            26679930  involuntary context switches
+           139738679  instructions retired
+            54232437  cycles elapsed
+            12583416  peak memory footprint
+2026-10-12 12:03:30 nn NN3-dm
+12:13:25 done NN3-dm-check2016 (593s)
+      595.64 real      1285.95 user       115.91 sys
+          9321955328  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             1872846  page reclaims
+                 335  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                5151  voluntary context switches
+            29076142  involuntary context switches
+           140671901  instructions retired
+            55861419  cycles elapsed
+            12648952  peak memory footprint
+         10290069504  maximum resident set size
+         11626430464  maximum resident set size
+         11150131200  maximum resident set size
+         11792629760  maximum resident set size
+         12526878720  maximum resident set size
+         11529388032  maximum resident set size
+         11656708096  maximum resident set size
+          9321955328  maximum resident set size
+2026-10-12 12:13:26 all check2016 predictions written; next: uv run --locked python scripts/phase5_report.py --check2016

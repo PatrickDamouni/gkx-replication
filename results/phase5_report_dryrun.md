@@ -1,6 +1,6 @@
 # Phase 5 report — DRY RUN on 1987–2016 (not the holdout)
 
-Code `8bb58a7`; the freeze-v1 test predictions play the holdout, so every 1987–2016 column equals its own value.
+Code `0541701`; the freeze-v1 test predictions play the holdout, so every 1987–2016 column equals its own value.
 
 ## H1 — the one confirmatory test
 
