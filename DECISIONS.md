@@ -643,3 +643,45 @@ No result here changes the D048 verdict; none is a new confirmatory test.
 - **Correction (council 13):** "seen at `cb59143` (`result-v1`)" above conflates two commits:
   `cb59143` holds the test-run report; tag `result-v1` points at `d2086a7`, which adds the council-11
   review and README update on top of it.
+
+## D050 — Phase 5 pre-registration: the sealed holdout, one confirmatory test (user-approved 2026-10-12, before the holdout is opened)
+Written after the 1987–2016 look (`result-v1`), so it is informed by that window; it is fixed and
+pushed to the public repository before any holdout data or 2017+ return is read.
+- **Scope: Arm A only** — GKX's datashare characteristics (sealed file sha256
+  `9a87fbf7153c2a4d6d61ac93196df24f59a6f4d590566d2e780a0965e5a1881b`, D023), test months 2017-01 →
+  datashare's last month (≈ 2021; whatever is there, used in full, partial last year included).
+  Macro predictors: sealed Welch–Goyal file (sha256 `4d2640cc5696…`, full value in
+  `docs/backup_manifest.sha256`). Returns: CRSP 2017+ pulled from WRDS at unseal with the unchanged
+  build code (`gkx.crsp`, D019/D020), only for the months above. Arm B (OSAP, 2017–2024) is
+  deferred, not dropped; it would get its own entry before it is run.
+- **Models: the frozen list unchanged** — the same 18 specifications as `freeze-v1`
+  (`scripts/run_test.py`), NN seeds 0–4, same hyperparameter grids, thread pins and libraries.
+- **Folds:** continue GKX's schedule — one refit per holdout year; training window 1957-03 → the
+  year before validation (expanding), validation = the 12 years before the test year (2017: train
+  1957–2004, validate 2005–2016). No information from a test year enters its own fit.
+- **Code:** opening the holdout needs new loading, fold-range and runner code. It goes on a new tag
+  `freeze-v2`; the diff from `freeze-v1` may touch only data loading, the fold range and the runner,
+  never `src/gkx/{linear,reduction,enet,glm,trees,nn,evaluate}.py`. Before `freeze-v2`, the new code
+  re-runs the 2016 fold for all 18 models and must match the `freeze-v1` test predictions
+  bit-identically. The sealed files' sha256 are checked before they are read.
+- **The one confirmatory test (H1):** NN3-dm (5-seed ensemble, demeaned-target arm, D043) beats the
+  constant (each training window's mean raw return) on the holdout: one-sided Diebold–Mariano on
+  monthly summed squared-error differentials, HAC 5 lags (the frozen D010 code), α = 0.05.
+  - **Disclosed:** H1 was chosen after seeing 1987–2016, where it had t = 4.57 and NN3-dm was among
+    the strongest models; the -dm arm was pre-specified (D043) but secondary there.
+  - **Power** (`results/exploratory/phase5_power.md`, block bootstrap of the 1987–2016 series): at
+    60 months ≈ 69% if the 1987–2016 effect persists unchanged (optimistic: winner's curse), ≈ 32%
+    at half strength, false-positive rate ≈ 6% with no effect.
+  - **Reading, fixed now:** reject → "on GKX's characteristics, the demeaned-target NN3's edge over
+    a constant survived the first post-publication years". Not rejected → "not detected"; given
+    the power at half strength, this is weak evidence of decay, never evidence of absence.
+- **Reported, deciding nothing:** the full frozen report on the holdout (all 18 models, the seven
+  D045 tests and the mechanical D048 label — test 1 has ≈ 23% power at 60 months even with no decay,
+  so its outcome is stated as uninformative in advance); every ΔR² with its month-block bootstrap
+  CI; and the decay ratio (holdout ΔR² ÷ 1987–2016 ΔR²) for H1 and for test 1, with bootstrap CIs.
+- **Expected outcome, stated in advance:** NN3's raw-target edge already faded after 2002
+  (exploratory, D049), so a null for the raw arm is the expected result and is not news.
+- **Single look:** the holdout is read once, after all 18 holdout prediction runs finish from
+  `freeze-v2`; one report; any crash follows D044 (reuse / resume, never a second look).
+- **Timestamp:** this entry is pushed to https://github.com/PatrickDamouni/gkx-replication and
+  tagged `phase5-prereg` before any code reads `data/sealed/`.
