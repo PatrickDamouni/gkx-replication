@@ -629,3 +629,14 @@ nothing after 201612 is loaded and `data/sealed/` is never opened. Code: `script
    *averaged* over stocks (equal-weighted months) instead of summed (D010), and a note on D008's
    wording ("monthly mean") vs the code (monthly sums).
 No result here changes the D048 verdict; none is a new confirmatory test.
+- **Addendum (council 12, before any further analysis):** the code moved to
+  `exploratory/phase4_diagnostics.py`. Under `scripts/` it made `final_report.py`'s frozen-path check
+  refuse at HEAD. `tests/test_phase4.py` now asserts `src/`, `scripts/`, `pyproject.toml` and
+  `uv.lock` are unchanged since `freeze-v1`. Deviations from the list above, logged:
+  - item 3 uses each permno's last *CRSP* month, not last panel month (it carries the D019
+    delisting return and also mergers), and conditioning on it is look-ahead;
+  - NYSE breakpoints use all NYSE panel rows, not common stocks only;
+  - item 7 re-weights the 6 DM tests; test 7 is Clark–West and is not re-weighted;
+  - item 4 adds the symmetric trim (train_mean's best months) and names the column as post hoc.
+  Wording: the within-month SSE part is "cross-sectional fit" (ordering and forecast scale), not
+  pure ranking.
