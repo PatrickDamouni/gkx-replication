@@ -4,8 +4,8 @@ Patrick Damouni · Michigan State University · October 2026
 
 *AI assistance:* the code, analyses and this text were drafted with Claude (Anthropic) under my
 direction, and design reviews were run as panels of Claude instances ("councils"; records in
-`.claude/council-cache/`). Every decision was mine to approve. Repository private; access on
-request. "Dnnn" refers to an entry in [`DECISIONS.md`](DECISIONS.md).
+`.claude/council-cache/`). Every decision was mine to approve. Code, decisions and reports:
+https://github.com/PatrickDamouni/gkx-replication (public since 2026-10-12). "Dnnn" refers to an entry in [`DECISIONS.md`](DECISIONS.md).
 
 ## The result
 
@@ -52,7 +52,8 @@ outputs. A sealed 2017+ holdout (Phase 5) has not been opened.
   models bit-identically; the diff to `freeze-v1` touches only report code.
 - **Timeline (EDT).** Pre-registration tagged 2026-10-07. 48 logged decisions before the look. Test
   run 2026-10-10 23:04 → 2026-10-11 22:14. **All of this is local git history**: the repository's
-  first external timestamp (GitHub, private) is 2026-10-12, after the result.
+  first external timestamp (GitHub) is 2026-10-12, after the result; the repository went public the
+  same day.
 
 ## 2. Pre-specified result
 
