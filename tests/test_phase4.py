@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts/phase4_diagnostics.py"
+SCRIPT = Path(__file__).resolve().parents[1] / "exploratory/phase4_diagnostics.py"
 
 
 def _load():
@@ -42,3 +42,51 @@ def test_months_helper_sums_by_month():
     mo = mod.Months(np.array([3, 1, 3, 2]))
     assert mo.sum(np.array([1.0, 2.0, 3.0, 4.0])).tolist() == [2.0, 4.0, 4.0]
     assert mo.n.tolist() == [1, 1, 2]
+
+
+def test_frozen_paths_are_unchanged_since_freeze_v1():
+    import subprocess
+
+    import pytest
+
+    repo = SCRIPT.parents[1]
+    tag = subprocess.run(
+        ["git", "rev-parse", "-q", "--verify", "freeze-v1"],
+        cwd=repo,
+        capture_output=True,
+        check=False,
+    )
+    if tag.returncode != 0:
+        pytest.skip("no freeze-v1 tag")
+    changed = subprocess.run(
+        [
+            "git",
+            "diff",
+            "--name-only",
+            "freeze-v1",
+            "--",
+            "src",
+            "scripts",
+            "pyproject.toml",
+            "uv.lock",
+        ],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+    assert changed == [], changed  # Phase 4 code lives in exploratory/, never in frozen paths
+
+
+def test_sse_split_reconstructs_total():
+    mod = _load()
+    y = np.array([0.1, -0.2, 0.3, 0.05])
+    base = pd.DataFrame({"a": [0.0, 0.1, 0.0, 0.2], "train_mean": 0.0, "NN3": 0.0})
+    mo = mod.Months(np.array([1, 1, 2, 2]))
+    df, _ = mod.level_vs_ranking(base, ["a", "train_mean", "NN3"], mo, y, (y**2).sum())
+    row = df.set_index("model").loc["a"]
+    total = 100 * ((y - base["a"]) ** 2).sum() / (y**2).sum()
+    assert np.isclose(row.iloc[1] + row.iloc[2], total)
+    # residuals y - a = [0.1, -0.3 | 0.3, -0.15]; month means -0.1 and 0.075, two rows each
+    between = 100 * (2 * 0.1**2 + 2 * 0.075**2) / (y**2).sum()
+    assert np.isclose(row.iloc[1], between)
