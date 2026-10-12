@@ -640,3 +640,6 @@ No result here changes the D048 verdict; none is a new confirmatory test.
   - item 4 adds the symmetric trim (train_mean's best months) and names the column as post hoc.
   Wording: the within-month SSE part is "cross-sectional fit" (ordering and forecast scale), not
   pure ranking.
+- **Correction (council 13):** "seen at `cb59143` (`result-v1`)" above conflates two commits:
+  `cb59143` holds the test-run report; tag `result-v1` points at `d2086a7`, which adds the council-11
+  review and README update on top of it.

@@ -1,5 +1,9 @@
 # GKX replication
 
+**Result (1987–2016, single pre-specified look):** GKX's model ranking did not reproduce; a 5-seed
+NN3 ensemble beats a constant forecast (ΔR² +0.27 pp, p = 0.013, not Holm-significant), with the
+edge in microcaps and before 2003. Read [`WRITEUP.md`](WRITEUP.md).
+
 Replication and post-publication test of Gu, Kelly & Xiu (2020),
 *Empirical Asset Pricing via Machine Learning*, Review of Financial Studies.
 
@@ -15,7 +19,7 @@ Replication and post-publication test of Gu, Kelly & Xiu (2020),
 | 1. Data pipeline + leakage checks | done: CRSP + GKX datashare panel, sealed 2017+ holdout, OSAP map (D001–D026) |
 | 2. Baselines | done: OLS-3, OLS-all (+Huber), training-mean benchmark |
 | 3. Replication (linear, trees, NNs; walk-forward, multi-seed) | done: single 1987–2016 run from `freeze-v1` (2026-10-11); pre-specified verdict under D048 **partially replicates** — 5-seed NN3 ensemble R² 0.454% [0.165, 0.733] beats a training-mean forecast (p = 0.013, does not survive Holm); GKX's model ranking not reproduced. [`results/final_report.md`](results/final_report.md). Primary data is GKX's own characteristics (D022), not an independent build |
-| 4. Ablations + error analysis (pre-2017 only) | — |
+| 4. Ablations + error analysis (pre-2017 only) | step 1 done: zero-refit diagnostics (D049, exploratory); write-up |
 | 5. Unseal post-publication holdout, final test, write-up | — |
 
 ## Running
