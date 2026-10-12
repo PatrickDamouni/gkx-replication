@@ -794,3 +794,39 @@ Fixed now so nothing is decided after the look. Nothing here changes H1, its rea
   201701–202412, contiguous; written read-only to `data/sealed/crsp_returns_holdout.parquet`,
   sha256 `3414aecdad89c7edb10d7b743a8fc3d69d975743d2a3eee7617327472ed16a14` (= `holdout.CRSP_HOLDOUT_SHA`). Only counts, months and
   the hash were printed; the file has not been read since.
+
+## D053 — Unseal runbook, fixed before the go-ahead (council 16, 2026-10-12; no code change)
+`freeze-v2` (0541701) is final. Its evidence (`-check2016` 18/18, the dry run at the tag, the
+check log) was committed after the tag, at e0d2a09; a plain checkout of the tag drops those ledger
+rows, so the steps below are binding. Pre-checks on unsealed data: the pre-2017 macro,
+characteristics and CRSP files all hold signal month 201612 (macro row complete).
+1. On `master`, clean tree. Copy `results/` outside the repo (insurance).
+2. `git checkout --detach freeze-v2`, then `git checkout master -- results/` (restores the 54
+   `-check2016` ledger rows and the log; every gate excludes `results/`). Require 18 finished
+   `-check2016` runs, then `uv run --locked python scripts/phase5_report.py --check2016` → 18/18 at
+   0541701 (reads no sealed data; rehearses the report's own ledger lookup).
+3. `uv run --locked python scripts/build_panel_holdout.py --build`. If it crashes after writing the
+   panel but before the lock, delete the panel (nothing has been computed) and run it once more; any
+   other refusal (duplicate keys, a gap, missing macro) stops Phase 5 for a new decision entry.
+4. `git tag -a phase5-panel -m <sha>` once; push it; require `git ls-remote origin
+   refs/tags/phase5-panel` to equal `git rev-parse phase5-panel`. Never re-tag.
+5. From the repo root, on AC power: `nohup bash scripts/run_holdout.sh --holdout >/dev/null 2>&1 &`
+   (the redirect matters: a `nohup.out` in the repo would make every gate refuse). Nothing inside
+   the repo is created or edited until step 7; no Claude session or other agent reads ledger rows —
+   progress is `tail results/holdout_run.log` and `grep -c fold_done results/trials.jsonl` only. A
+   `FAILED` line (e.g. a network drop at `ls-remote`): re-run the same command (D044); a stale
+   `results/.phase5.lock` after a hard kill is removed by hand first.
+6. Once: `uv run --locked python scripts/phase5_report.py --holdout 2>&1 | tee
+   results/phase5_report_console.log`. If it stops during its checks, nothing was computed: fix by
+   procedure, never by editing code. If it stops *after* computing (a non-finite secondary
+   statistic, a rendering error), that is a code bug under D051: `freeze-v2.1` may change
+   `scripts/phase5_report.py` only, all 18 holdout runs are refit at v2.1 and must reproduce the v2
+   predictions bit-identically, H1 is reported as computed, and the console log is published.
+7. Copy the ledger, logs, report and lock outside the repo and hash them; `git checkout --
+   results/ && git checkout master`; copy them back; `git diff --stat` must show only appended
+   ledger lines. Commit results with explicit paths only (never `-A`/`-f`; require no `parquet`,
+   `sealed` or `preds/` in `git diff --cached --name-only`), tag `result-v2`, push; then a docs
+   commit with the decision entry for the outcome.
+Notes: the iCloud backup holds row-level CRSP data — keep it private (Advanced Data Protection on)
+and confirm MSU's WRDS terms allow it; extend it to holdout files only then. For a server-side
+timestamp, a GitHub Release can be created on `freeze-v2` and `phase5-panel` (the author's choice).
