@@ -33,7 +33,9 @@ SEALED = {
         "4d2640cc569645deaa94cab27bd51ac32e3469eb72371660a3fd07110360448e",  # D021
     ),
 }
-CRSP_HOLDOUT = Path("data/sealed/crsp_returns_holdout.parquet")  # sha256 pinned in a D-entry
+CRSP_HOLDOUT = Path("data/sealed/crsp_returns_holdout.parquet")
+# Set from the one-time pull (scripts/pull_crsp_holdout.py --pull) before freeze-v2; D050 §3.
+CRSP_HOLDOUT_SHA = "unset: pull not yet run"
 
 
 class HashMismatchError(Exception):
