@@ -605,3 +605,27 @@ as a pass. Decided by the user before any test-window number exists:
   family-wise correction; it no longer decides any label.
 - Prediction path untouched (report code only); `.claude/council-cache/` is now git-ignored so a
   council record can never dirty the tree during the run (records are added with `git add -f`).
+
+## D049 — Phase 4 step 1: zero-refit diagnostics, listed before any is computed (council 11, 2026-10-11, after the single look)
+Everything here is **exploratory**: the 1987–2016 window was seen at `cb59143` (`result-v1`). The
+list is fixed now so the diagnostics do not grow with what they show. Inputs: the 18 frozen test
+prediction files (hash-checked against the ledger), the panel and `crsp_returns_pre2017.parquet`;
+nothing after 201612 is loaded and `data/sealed/` is never opened. Code: `scripts/phase4_diagnostics.py`
+→ `results/exploratory/phase4_diagnostics.md`, every output headed by a forced EXPLORATORY banner.
+1. **Seed fragility** (NN1–NN3, raw and -dm): R² and test 1 (DM vs train_mean) for all 31 seed
+   subsets; summary by subset size; every single-seed and leave-one-seed-out value for NN3.
+2. **Level vs ranking:** SSE split into a between-month part (Σ n_t (r̄_t − p̄_t)²) and a
+   within-month part, each as % of Σr², per model; NN3's gain over train_mean split the same way.
+   Pooled Mincer–Zarnowitz slope (target on forecast) per model.
+3. **Where the R² lives:** R² for train_mean, ENet+H, GBRT+H, RF, NN3, NN3-dm within NYSE-breakpoint
+   size quintiles (`me_lag`, `exchcd == 1`), common shares only (`shrcd` 10/11), and excluding each
+   permno's last panel month (proxy for the delisting month, D019). Price ≥ $5 needs a new WRDS
+   pull (no price in the build) — deferred, stated.
+4. **Influential months:** NN3 vs train_mean per-year ΔR²; test 1 recomputed after dropping the 1, 3
+   and 5 months contributing most to NN3's advantage.
+5. **GBRT+H:** its constant-fallback folds; GBRT+H vs ENet+H on the remaining years.
+6. **OLS+H:** share of its squared error from the worst 1/5/10 months and worst 0.01% of rows.
+7. **DM weighting sensitivity:** the 7 confirmatory tests with each month's loss differential
+   *averaged* over stocks (equal-weighted months) instead of summed (D010), and a note on D008's
+   wording ("monthly mean") vs the code (monthly sums).
+No result here changes the D048 verdict; none is a new confirmatory test.
