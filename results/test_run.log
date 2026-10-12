@@ -1,0 +1,57 @@
+2026-10-10 23:04:14 start test freeze-v1 46c1584
+2026-10-10 23:04:14 family linear
+23:04:26 done OLS-3-test (8s)
+23:04:35 done OLS-3+H-test (9s)
+23:05:45 done OLS-test (70s)
+23:07:55 done OLS+H-test (129s)
+23:09:36 done PCR-test (101s)
+23:11:18 done PLS-test (102s)
+23:15:54 done ENet+H-test (276s)
+23:36:55 done GLM+H-test (1261s)
+     1961.13 real      1825.31 user       144.43 sys
+         11021926400  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+            73480673  page reclaims
+                7071  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+                3499  voluntary context switches
+             1221202  involuntary context switches
+           220352799  instructions retired
+           121027334  cycles elapsed
+            12616184  peak memory footprint
+2026-10-10 23:36:56 family trees
+00:04:16 done GBRT+H-test (1638s)
+00:33:46 done GBRT+H-dm-test (1771s)
+02:53:09 done RF-test (8362s)
+05:15:28 done RF-dm-test (8539s)
+    20312.73 real    104041.28 user      3026.71 sys
+         12718620672  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+            51343428  page reclaims
+                2708  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   1  messages sent
+                   1  messages received
+                   1  signals received
+               77193  voluntary context switches
+           574373038  involuntary context switches
+           165171134  instructions retired
+            69066680  cycles elapsed
+            12632592  peak memory footprint
+2026-10-11 05:15:28 family nn (serial)
+         11021926400  maximum resident set size
+         12718620672  maximum resident set size
+         11978637312  maximum resident set size
+         10823598080  maximum resident set size
+2026-10-11 22:14:51 all test predictions written; next: uv run --locked python scripts/final_report.py 
