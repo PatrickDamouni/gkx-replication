@@ -33,13 +33,14 @@ def _phase4():
 
 
 def hac_t(x: np.ndarray, lags: int = LAGS) -> np.ndarray:
-    """Newey–West t of the mean, row-wise over a (draws, T) array (matches gkx.metrics)."""
+    """Newey–West (Bartlett) t of the mean, row-wise over (draws, T): the same estimator as
+    gkx.metrics.hac_mean_test (statsmodels HAC, autocovariances divided by T, no correction)."""
     t_len = x.shape[1]
     e = x - x.mean(axis=1, keepdims=True)
     var = (e**2).mean(axis=1)
     for k in range(1, lags + 1):
         w = 1 - k / (lags + 1)
-        var += 2 * w * (e[:, k:] * e[:, :-k]).mean(axis=1)
+        var += 2 * w * (e[:, k:] * e[:, :-k]).sum(axis=1) / t_len  # /T, as statsmodels HAC
     return x.mean(axis=1) / np.sqrt(var / t_len)
 
 
