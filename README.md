@@ -5,6 +5,7 @@ Replication and post-publication test of Gu, Kelly & Xiu (2020),
 
 - Question, success criteria and locked splits: [`PREREGISTRATION.md`](PREREGISTRATION.md)
 - Every design choice and why: [`DECISIONS.md`](DECISIONS.md)
+- **The 1987–2016 result, written up: [`WRITEUP.md`](WRITEUP.md)**
 
 ## Phases
 
