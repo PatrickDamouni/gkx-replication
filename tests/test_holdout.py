@@ -260,3 +260,14 @@ def test_published_lock_must_match_the_pushed_tag(monkeypatch, tmp_path):
     answers.update(tag="a" * 64, **{"ls-remote": ""})
     with pytest.raises(h.FreezeError, match="not pushed"):
         h.require_published_lock(lock)
+
+
+def test_crsp_holdout_sha_is_pinned_and_recorded():
+    """D050 §3: the sealed CRSP pull's sha256 is in the code and in a decision entry."""
+    import re
+
+    from gkx.holdout import CRSP_HOLDOUT_SHA
+
+    assert re.fullmatch(r"[0-9a-f]{64}", CRSP_HOLDOUT_SHA)
+    decisions = (Path(__file__).resolve().parents[1] / "DECISIONS.md").read_text()
+    assert CRSP_HOLDOUT_SHA in decisions

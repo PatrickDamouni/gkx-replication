@@ -786,3 +786,11 @@ Fixed now so nothing is decided after the look. Nothing here changes H1, its rea
   `phase5_report.py --holdout`; (7) only then commit results (the ledger, logs and report) on
   `master`. Nothing under `results/` is committed or pushed between (5) and (7): the ledger carries
   validation scores on 2017+ months.
+
+## D052 — CRSP 2017+ pulled once and sealed (2026-10-12, before freeze-v2 and before any holdout read)
+- `pull_crsp_holdout.py --check`: the 2015–2016 re-pull from legacy `crsp.msf`/`crsp.msedelist`
+  equals the frozen `crsp_returns_pre2017.parquet` exactly (138,263 rows, 201501–201612).
+- `--pull`: its 2016-12 rows equal the frozen file; 604,278 rows, 10,164 permnos, return months
+  201701–202412, contiguous; written read-only to `data/sealed/crsp_returns_holdout.parquet`,
+  sha256 `3414aecdad89c7edb10d7b743a8fc3d69d975743d2a3eee7617327472ed16a14` (= `holdout.CRSP_HOLDOUT_SHA`). Only counts, months and
+  the hash were printed; the file has not been read since.

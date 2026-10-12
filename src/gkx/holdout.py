@@ -36,7 +36,7 @@ SEALED = {
 }
 CRSP_HOLDOUT = Path("data/sealed/crsp_returns_holdout.parquet")
 # Set from the one-time pull (scripts/pull_crsp_holdout.py --pull) before freeze-v2; D050 §3.
-CRSP_HOLDOUT_SHA = "unset: pull not yet run"
+CRSP_HOLDOUT_SHA = "3414aecdad89c7edb10d7b743a8fc3d69d975743d2a3eee7617327472ed16a14"  # D052
 
 
 REPO = Path(__file__).resolve().parents[2]
