@@ -644,44 +644,105 @@ No result here changes the D048 verdict; none is a new confirmatory test.
   `cb59143` holds the test-run report; tag `result-v1` points at `d2086a7`, which adds the council-11
   review and README update on top of it.
 
-## D050 — Phase 5 pre-registration: the sealed holdout, one confirmatory test (user-approved 2026-10-12, before the holdout is opened)
-Written after the 1987–2016 look (`result-v1`), so it is informed by that window; it is fixed and
-pushed to the public repository before any holdout data or 2017+ return is read.
-- **Scope: Arm A only** — GKX's datashare characteristics (sealed file sha256
-  `9a87fbf7153c2a4d6d61ac93196df24f59a6f4d590566d2e780a0965e5a1881b`, D023), test months 2017-01 →
-  datashare's last month (≈ 2021; whatever is there, used in full, partial last year included).
-  Macro predictors: sealed Welch–Goyal file (sha256 `4d2640cc5696…`, full value in
-  `docs/backup_manifest.sha256`). Returns: CRSP 2017+ pulled from WRDS at unseal with the unchanged
-  build code (`gkx.crsp`, D019/D020), only for the months above. Arm B (OSAP, 2017–2024) is
-  deferred, not dropped; it would get its own entry before it is run.
-- **Models: the frozen list unchanged** — the same 18 specifications as `freeze-v1`
-  (`scripts/run_test.py`), NN seeds 0–4, same hyperparameter grids, thread pins and libraries.
-- **Folds:** continue GKX's schedule — one refit per holdout year; training window 1957-03 → the
-  year before validation (expanding), validation = the 12 years before the test year (2017: train
-  1957–2004, validate 2005–2016). No information from a test year enters its own fit.
-- **Code:** opening the holdout needs new loading, fold-range and runner code. It goes on a new tag
-  `freeze-v2`; the diff from `freeze-v1` may touch only data loading, the fold range and the runner,
-  never `src/gkx/{linear,reduction,enet,glm,trees,nn,evaluate}.py`. Before `freeze-v2`, the new code
-  re-runs the 2016 fold for all 18 models and must match the `freeze-v1` test predictions
-  bit-identically. The sealed files' sha256 are checked before they are read.
-- **The one confirmatory test (H1):** NN3-dm (5-seed ensemble, demeaned-target arm, D043) beats the
-  constant (each training window's mean raw return) on the holdout: one-sided Diebold–Mariano on
-  monthly summed squared-error differentials, HAC 5 lags (the frozen D010 code), α = 0.05.
-  - **Disclosed:** H1 was chosen after seeing 1987–2016, where it had t = 4.57 and NN3-dm was among
-    the strongest models; the -dm arm was pre-specified (D043) but secondary there.
-  - **Power** (`results/exploratory/phase5_power.md`, block bootstrap of the 1987–2016 series): at
-    60 months ≈ 69% if the 1987–2016 effect persists unchanged (optimistic: winner's curse), ≈ 32%
-    at half strength, false-positive rate ≈ 6% with no effect.
-  - **Reading, fixed now:** reject → "on GKX's characteristics, the demeaned-target NN3's edge over
-    a constant survived the first post-publication years". Not rejected → "not detected"; given
-    the power at half strength, this is weak evidence of decay, never evidence of absence.
-- **Reported, deciding nothing:** the full frozen report on the holdout (all 18 models, the seven
-  D045 tests and the mechanical D048 label — test 1 has ≈ 23% power at 60 months even with no decay,
-  so its outcome is stated as uninformative in advance); every ΔR² with its month-block bootstrap
-  CI; and the decay ratio (holdout ΔR² ÷ 1987–2016 ΔR²) for H1 and for test 1, with bootstrap CIs.
-- **Expected outcome, stated in advance:** NN3's raw-target edge already faded after 2002
-  (exploratory, D049), so a null for the raw arm is the expected result and is not news.
-- **Single look:** the holdout is read once, after all 18 holdout prediction runs finish from
-  `freeze-v2`; one report; any crash follows D044 (reuse / resume, never a second look).
-- **Timestamp:** this entry is pushed to https://github.com/PatrickDamouni/gkx-replication and
-  tagged `phase5-prereg` before any code reads `data/sealed/`.
+## D050 — Phase 5 pre-registration: the sealed holdout, one confirmatory test (user-approved 2026-10-12; revised after council 14; binding at tag `phase5-prereg`, before the holdout is opened)
+Written after the 1987–2016 look (`result-v1`), so it is informed by that window. Fixed and pushed
+to https://github.com/PatrickDamouni/gkx-replication and tagged `phase5-prereg` before any 2017+
+characteristic, macro value or return is read. (Git dates are author-set; the public push is the
+external evidence.)
+
+**1. Deviation from the pre-registration, stated plainly.** PREREGISTRATION.md (prereg-v1) asked
+whether the *ranking* (NN/trees > penalized linear > OLS) holds after publication. The ranking did
+not hold on 1987–2016, and on ~60 holdout months its tests have little power (NN3-dm vs ENet+H
+within-month ≈ 60% at full strength, ≈ 23% at half; NN3 vs ENet+H ≈ 13%). D050 replaces that question
+with a narrower one (H1) and reports the ranking tests without letting them decide anything. H1
+is not a test of whether machine learning beats linear models.
+
+**2. Scope: Arm A only.** GKX's datashare characteristics (sealed, sha256
+`9a87fbf7153c2a4d6d61ac93196df24f59a6f4d590566d2e780a0965e5a1881b`, D023) and Welch–Goyal macro
+(sealed, sha256 `4d2640cc569645deaa94cab27bd51ac32e3469eb72371660a3fd07110360448e`). Test months = every return month from 201701 to the last
+month with datashare characteristics, inner-joined with CRSP returns: whatever length that is
+(estimated 24–84 months), no minimum, a thin or partial final year kept and reported. Arm A can
+never be swapped for Arm B. Arm B (OSAP, 2017–2024) is deferred; once Arm A is read, only months
+after Arm A's last month could ever support a confirmatory Arm B claim.
+
+**3. Returns.** Pre-2017 rows, including December-2016 market equity for January 2017's `me_lag`,
+always come from the frozen `crsp_returns_pre2017.parquet`; pre-2017 CRSP is never re-pulled.
+2017+ CRSP is pulled once from legacy `crsp.msf`/`crsp.msedelist` with the D019/D020 build logic,
+written straight to `data/sealed/`, its sha256 recorded in a decision entry and pushed before
+unseal, and not read until then. Before that pull, 2015–2016 is re-pulled and must equal the
+frozen file (checks that the legacy tables are unchanged). If legacy tables no longer serve 2017+,
+stop: new decision entry before anything else.
+
+**4. Models: unchanged.** The 18 specifications of `scripts/run_test.py` at `freeze-v1`, NN seeds
+0–4, same grids, thread pins and libraries; NNs run one at a time (concurrent NN processes are
+refused in Phase 5: ≈ 13–14 GB each at the largest holdout fold on a 24 GB machine).
+
+**5. Folds.** GKX's schedule continued: one refit per test year; training 1957-03 → the year before
+validation (expanding); validation the 12 years before the test year (2017: train 1957–2004,
+validate 2005–2016). Earlier holdout years therefore enter later folds' validation and model
+selection — by design; no test year enters its own fit. The fold list is **2016 → last year**:
+2016 is a canary whose predictions must equal the `freeze-v1` 2016 test predictions
+(`np.array_equal` on every `pred*` column, all 18 models). It reveals nothing about the holdout
+and is the only test of the merged loader (row order drives NN batching and tree binning).
+
+**6. Code: `freeze-v2`, by whitelist.**
+- Byte-identical to `freeze-v1`: `src/gkx/{linear,reduction,enet,glm,trees,nn,evaluate,metrics,
+  report,preprocess,build,macro,datashare}.py`, `scripts/run_test.py`, `scripts/final_report.py`,
+  `pyproject.toml`, `uv.lock`.
+- May change only by additive keyword arguments whose defaults keep the seal:
+  `src/gkx/{panel,walk_forward,align,crsp}.py`.
+- New files: a holdout panel builder, `scripts/run_holdout.py`, a launcher, and
+  `scripts/phase5_report.py`, plus tests.
+- Every test that exists at `freeze-v1` passes unmodified at `freeze-v2`. New tests on synthetic
+  data cover: the pre/holdout join with no gap at 201612→201701 (January 2017's return row comes
+  from the pre-2017 datashare file, which is split on signal month); a partial final year; sha
+  checks failing closed; refusal of mixed commits or run tags.
+- Run names end in `-check2016` (pre-tag check, `counts_as_trial=False`) or `-holdout`; the
+  1987–2016 side is always loaded by commit `46c1584`, never by "latest".
+- Before tagging `freeze-v2`, at the exact commit to be tagged: the 2016 fold of all 18 models is
+  re-run on the frozen panel through the new runner and must match `freeze-v1` bit-identically, and
+  `phase5_report.py` run on the 1987–2016 predictions must reproduce H1 t = 4.569 and test 1
+  t = 2.213. A mismatch blocks the tag: first restore the environment (macOS/Accelerate drift is the
+  likely cause); otherwise a new decision entry before unseal. No tolerance is pre-set.
+
+**7. Panel lock and the run.** The holdout panel is built once; its sha256 is written to
+`results/holdout_panel.sha256` before the first fit; it is never rebuilt; its ≤ 201612 rows and its
+schema and column order must equal the frozen panel (sha `dfffda9a…`, D044) or the build aborts.
+The launcher refuses a different panel, any commit but `freeze-v2`, or concurrent NNs. Crash
+(D044): re-run the same command — finished runs reused, unfinished resumed. A code bug found after
+unseal: fixed once at `freeze-v2.1`, logged as a deviation, all 18 holdout runs refit (≈ 8 h),
+every pre-crash run must reproduce, the canary re-verified, the report run once.
+
+**8. The one confirmatory test (H1).** NN3-dm (5-seed ensemble, demeaned-target arm, D043) beats
+the constant (each training window's mean raw return) on the holdout test months:
+`gkx.metrics.diebold_mariano(df, base="train_mean", candidate="NN3-dm")` — one-sided, monthly summed
+squared-error differentials, HAC with the frozen constant `metrics.HAC_LAGS = 5` (D015's rule would
+give 3 at T ≈ 60; 5 is kept to match the frozen code and the power simulation), normal p,
+α = 0.05 nominal.
+- **Disclosed:** H1 was picked as the top of five candidate tests in
+  `results/exploratory/phase5_power.md`, after seeing 1987–2016 (frozen-code t = 4.569 there).
+  NN3-dm's forecast is the model output plus the same training-window mean as the baseline, so H1
+  is mostly a test of within-month cross-sectional fit. For contrast, ENet+H vs the constant had
+  t = 1.63 (p = 0.052) on 1987–2016.
+- **Power** (block bootstrap, exact frozen HAC): at 60 months ≈ 68% if the 1987–2016 effect persists
+  unchanged (optimistic: winner's curse, top-of-five selection), ≈ 30% at half strength — the
+  realistic central case given typical post-publication decay. At 24–36 months ≈ 56–58% / ≈ 29%.
+  The test over-rejects in short samples: simulated size ≈ 6% at 60 months, ≈ 8% at 36, ≈ 12% at 24.
+  **The most likely outcome is "not detected".**
+- **Reading, fixed now** (printed mechanically by `phase5_report.py` from p ≤ 0.05):
+  - reject → "On GKX's characteristics, the demeaned-target NN3's within-month edge over a constant
+    survived the first post-publication years (Arm A, N months). This is not evidence that machine
+    learning beats linear models."
+  - not reject → "Not detected (Arm A, N months). With ≈ 30% power at half the 1987–2016 effect,
+    this is weak evidence of decay, not evidence of absence."
+
+**9. Reported, deciding nothing.** All 18 models' holdout R² with month-block bootstrap CIs; the
+seven D045 tests (with their power stated in advance: test 1 ≈ 23%); NN3-dm vs ENet+H on
+within-month errors; ENet+H vs the constant; each beside its 1987–2016 value. No D048 label is
+printed for the holdout (declared uninformative in advance), and no decay ratio. With ~5 blocks of
+12 months, bootstrap CIs are coarse; the report says so. NN3's raw-target edge already faded after
+2002 (exploratory, D049), so a null for the raw arm is the expected result.
+
+**10. Single look.** A "look" is any metric computed on holdout *test-month* predictions. It happens
+once: `phase5_report.py` runs after all 18 holdout runs finish from `freeze-v2`. Until then progress
+is read only as counts of `fold_done` rows (they carry validation scores on 2017+ months).
