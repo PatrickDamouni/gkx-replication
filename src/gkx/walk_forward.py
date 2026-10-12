@@ -27,9 +27,12 @@ def walk_forward(
     val_years: int = 12,
     first_test_year: int = 1987,
     last_test_year: int = 2016,
+    allow_holdout: bool = False,
 ) -> list[Fold]:
-    """One fold per test year; train ends where validation begins."""
-    if last_test_year * 100 + 12 >= HOLDOUT_START:
+    """One fold per test year; train ends where validation begins.
+
+    `allow_holdout=True` is passed only by the Phase 5 runner (D050)."""
+    if not allow_holdout and last_test_year * 100 + 12 >= HOLDOUT_START:
         raise SealedHoldoutError(
             f"test year {last_test_year} reaches months >= {HOLDOUT_START}, sealed until Phase 5"
         )

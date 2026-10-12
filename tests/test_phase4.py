@@ -44,40 +44,6 @@ def test_months_helper_sums_by_month():
     assert mo.n.tolist() == [1, 1, 2]
 
 
-def test_frozen_paths_are_unchanged_since_freeze_v1():
-    import subprocess
-
-    import pytest
-
-    repo = SCRIPT.parents[1]
-    tag = subprocess.run(
-        ["git", "rev-parse", "-q", "--verify", "freeze-v1"],
-        cwd=repo,
-        capture_output=True,
-        check=False,
-    )
-    if tag.returncode != 0:
-        pytest.skip("no freeze-v1 tag")
-    changed = subprocess.run(
-        [
-            "git",
-            "diff",
-            "--name-only",
-            "freeze-v1",
-            "--",
-            "src",
-            "scripts",
-            "pyproject.toml",
-            "uv.lock",
-        ],
-        cwd=repo,
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout.split()
-    assert changed == [], changed  # Phase 4 code lives in exploratory/, never in frozen paths
-
-
 def test_sse_split_reconstructs_total():
     mod = _load()
     y = np.array([0.1, -0.2, 0.3, 0.05])

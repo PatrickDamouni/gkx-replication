@@ -69,6 +69,29 @@ def build_returns(
     return df.loc[universe, cols].sort_values(["yyyymm", "permno"]).reset_index(drop=True)
 
 
+def fetch(db, start: str, end: str) -> pd.DataFrame:
+    """Build returns for dates in [start, end) with the same queries and `build_returns` (D050).
+
+    Used by the Phase 5 scripts only: the 2015-2016 consistency re-pull and the sealed 2017+ pull.
+    """
+    msf = db.raw_sql(
+        f"select permno, date, ret, prc, shrout from crsp.msf "
+        f"where date >= '{start}' and date < '{end}'",
+        date_cols=["date"],
+    )
+    delist = db.raw_sql(
+        f"select permno, dlstdt, dlstcd, dlret from crsp.msedelist "
+        f"where dlstdt >= '{start}' and dlstdt < '{end}'",
+        date_cols=["dlstdt"],
+    )
+    names = db.raw_sql(QUERY_NAMES, date_cols=["namedt", "nameendt"])
+    rf = db.raw_sql(
+        f"select date, rf from ff.factors_monthly where date >= '{start}' and date < '{end}'",
+        date_cols=["date"],
+    )
+    return build_returns(msf, delist, names, rf)
+
+
 def main() -> int:
     import wrds
 
