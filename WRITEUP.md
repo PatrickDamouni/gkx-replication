@@ -97,8 +97,10 @@ p < 0.001. Their overall R² is 0.66% and 0.67%. The ranking GKX report appears 
 
 ## 3. Sealed holdout, 2017–2021 (Phase 5)
 
-Fixed and pushed to GitHub before any holdout data were read (D050, tag `phase5-prereg`; code
-`freeze-v2`, panel hash published as tag `phase5-panel`):
+Fixed before any 2017+ row entered a model (D050, tag `phase5-prereg`; code `freeze-v2`; panel
+hash as tag `phase5-panel`). GitHub's activity log shows D050 pushed at 2026-10-12 14:16 UTC and the
+`freeze-v2` code at 15:03 UTC, about 32 hours before the look; the panel tag's timing, like
+everything before 2026-10-12, rests on self-recorded git dates and the ledger (D054):
 
 - **One confirmatory test (H1):** NN3-dm (5-seed ensemble trained on the within-month demeaned
   target) beats the constant, one-sided Diebold–Mariano, α = 0.05. It was picked *after* seeing

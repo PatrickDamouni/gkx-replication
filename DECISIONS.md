@@ -867,3 +867,13 @@ timestamp, a GitHub Release can be created on `freeze-v2` and `phase5-panel` (th
 - **Addendum — GitHub Releases** (created 2026-10-13T23:14Z, after the look): `phase5-prereg`,
   `phase5-panel`, `result-v2`. Their server-set dates prove these tags existed by then, not that
   they were pushed before the fits; that ordering rests on the 2026-10-12 pushes and the ledger.
+- **Correction to the addendum above (council 18):** a release's `published_at` is server-set;
+  its `created_at` echoes the client-set tagger date, and the tags are unsigned. GitHub's activity
+  log records branch pushes only: D050 (1220892) was pushed at 2026-10-12T14:16:23Z and the
+  freeze-v2 code (0541701) at 15:03:37Z, but no push between 16:22:41Z that day and the results
+  commit 46e7466 (2026-10-13T22:41:52Z) exists, so nothing on the server shows `phase5-panel` before
+  the fits; that ordering rests on the ledger and the tagger date only. "Before any holdout data
+  were read" is also too strong: the 2026-10-08 ingest read the datashare file to split off the
+  2017+ rows (D023); what is claimed is that no 2017+ row entered a model or metric before the
+  look. The release notes were corrected the same evening. For any future test: register with a
+  third party at the time, and push locks as branch commits, not only as tags.
