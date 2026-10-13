@@ -864,3 +864,6 @@ timestamp, a GitHub Release can be created on `freeze-v2` and `phase5-panel` (th
   builder but enter no panel or metric; the OSAP holdout file was never opened.
 - **Backup:** holdout files are added to the manifest and the iCloud copy only after the WRDS-terms
   question in D053 is settled.
+- **Addendum — GitHub Releases** (created 2026-10-13T23:14Z, after the look): `phase5-prereg`,
+  `phase5-panel`, `result-v2`. Their server-set dates prove these tags existed by then, not that
+  they were pushed before the fits; that ordering rests on the 2026-10-12 pushes and the ledger.
