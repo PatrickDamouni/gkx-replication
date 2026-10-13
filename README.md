@@ -7,7 +7,6 @@ tested in two windows, each looked at once:
 - **2017–2021 (sealed holdout, 60 months):** the one test fixed and published before unsealing
   did not detect an edge (t = 1.50, p = 0.066; power ≈ 30% if the effect had halved).
 
-
 - Question, success criteria and locked splits: [`PREREGISTRATION.md`](PREREGISTRATION.md)
 - Every design choice and why: [`DECISIONS.md`](DECISIONS.md)
 - **Both results, written up: [`WRITEUP.md`](WRITEUP.md)**
