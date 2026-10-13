@@ -886,3 +886,16 @@ timestamp, a GitHub Release can be created on `freeze-v2` and `phase5-panel` (th
   force-pushed or deleted; release immutability on for new releases (the three existing releases
   stay editable, their tags do not); secret scanning and push protection on; wiki off. Commits from
   here on use the GitHub noreply email; earlier history is unchanged.
+- **Correction to the correction (council 19), and the repo is frozen after it:** the anchor is
+  the unseal, not the look. 2017+ rows entered models from the first holdout fit
+  (2026-10-13T14:05:39Z) and later folds validated on 2017+ months before the look (D050 §10), so
+  "no 2017+ row entered a model or metric before the look" above is wrong. What holds: D050 was
+  pushed at 2026-10-12T14:16:23Z and `freeze-v2` (0541701), which pins the sha256 of the datashare,
+  macro and CRSP holdout files, at 15:03:37Z, about 7 h before the unseal (22:01:36Z, ledger) and a
+  day before the first fit. Before the unseal, 2017+ data were touched only by the D023 split and
+  the D052 pull (counts, months, hashes); that nobody looked further rests on the author's word,
+  and that is the main residual risk. The rulesets stop accidental or unauthorized tag moves, not
+  the owner, who could disable them; the tamper-evident record is the Software Heritage snapshot.
+  The SWH and Wayback captures were taken about 49 minutes after the look: they preserve the
+  server's push times, not any pre-look state. The `phase5-prereg` release note and WRITEUP §3 were
+  corrected to match. The run is reproducible from `freeze-v2` by anyone with WRDS access.

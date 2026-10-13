@@ -97,10 +97,14 @@ p < 0.001. Their overall R² is 0.66% and 0.67%. The ranking GKX report appears 
 
 ## 3. Sealed holdout, 2017–2021 (Phase 5)
 
-Fixed before any 2017+ row entered a model (D050, tag `phase5-prereg`; code `freeze-v2`; panel
-hash as tag `phase5-panel`). GitHub's activity log shows D050 pushed at 2026-10-12 14:16 UTC and the
-`freeze-v2` code at 15:03 UTC, about 32 hours before the look; the panel tag's timing, like
-everything before 2026-10-12, rests on self-recorded git dates and the ledger (D054):
+Fixed before the holdout was unsealed (D050, tag `phase5-prereg`; code `freeze-v2`; panel hash as
+tag `phase5-panel`). GitHub's activity log shows D050 pushed at 2026-10-12 14:16 UTC and the
+`freeze-v2` code, which pins the sha256 of every sealed input, at 15:03 UTC: about 7 hours before the
+unseal (22:01 UTC, ledger) and a day before the first holdout fit. Before the unseal the 2017+ files
+were touched only by the ingest split and the CRSP pull, which printed counts and hashes; that nobody
+looked further between 2026-10-08 and the unseal rests on the author's word, as does everything
+before 2026-10-12 (D054). The fits are deterministic, so anyone with WRDS access can rerun
+`freeze-v2` and check t = 1.503:
 
 - **One confirmatory test (H1):** NN3-dm (5-seed ensemble trained on the within-month demeaned
   target) beats the constant, one-sided Diebold–Mariano, α = 0.05. It was picked *after* seeing
