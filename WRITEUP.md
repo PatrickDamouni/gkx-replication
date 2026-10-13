@@ -1,4 +1,4 @@
-# Machine learning vs a constant: a pre-specified, single-look reproduction of Gu, Kelly & Xiu (2020), 1987–2016
+# Machine learning vs a constant: a pre-specified, single-look reproduction of Gu, Kelly & Xiu (2020), 1987–2016, with a sealed 2017–2021 holdout
 
 Patrick Damouni · Michigan State University · October 2026
 
@@ -15,14 +15,19 @@ https://github.com/PatrickDamouni/gkx-replication (public since 2026-10-12). "Dn
    they fit month-level returns and fell back to a constant in 6 of 30 years.
 2. **A 5-seed NN3 ensemble beats a constant forecast** (each training window's mean return):
    ΔR² = +0.27 pp [0.05, 0.50], one-sided p = 0.013; not significant after Holm.
-3. **The overall R²_oos of 0.45%** [0.17, 0.73] is close to GKX's 0.40%, but as the sum of two
+3. **On the sealed 2017–2021 holdout (60 months, one look, §3) the pre-registered test did not
+   detect an edge.** The one confirmatory test, fixed and published before unsealing (D050), was
+   the demeaned-target NN3 vs the constant: t = 1.50, one-sided p = 0.066, not rejected. Its
+   reading, written before the data: *weak evidence of decay, not evidence of absence* (power
+   ≈ 30% if the effect had halved). Raw NN3 vs the constant: t = 0.60.
+4. **The overall R²_oos of 0.45%** [0.17, 0.73] is close to GKX's 0.40%, but as the sum of two
    opposite gaps: large stocks 0.29% vs GKX's 0.70%, small stocks 0.84% vs 0.45%. The constant
    alone earns 0.18%, a benchmark GKX do not report.
-4. *Exploratory:* the margin needs the ensemble (the average single network scores 0.16%, below
+5. *Exploratory:* the margin needs the ensemble (the average single network scores 0.16%, below
    the constant), comes from within-month cross-sectional fit concentrated in the smallest stocks,
    and is concentrated before 2003.
-5. The pre-specified rule labels this **"partially replicates"**. The rule was rewritten twice on
-   the day of the run, and one earlier version gives "does not replicate (level only)" (§5).
+6. For 1987–2016 the pre-specified rule labels this **"partially replicates"**. The rule was rewritten twice on
+   the day of the run, and one earlier version gives "does not replicate (level only)" (§6).
 
 ## 1. Question and design
 
@@ -30,7 +35,7 @@ GKX (2020, *RFS*; reference numbers taken from NBER WP 25398, Sep 2019) report t
 and trees predict monthly US stock returns better than linear models. This project re-runs their
 design with the analysis fixed before its own 1987–2016 test predictions were looked at. GKX's
 published 1987–2016 results were known throughout; the blinding covered only this project's model
-outputs. A sealed 2017+ holdout (Phase 5) has not been opened.
+outputs. A sealed 2017–2021 holdout was then opened once, under a separate pre-registration (§3).
 
 - **Metric.** R²_oos = 1 − Σ(r − r̂)² / Σr², pooled over all stock-months, against a zero forecast
   (GKX's definition). ΔR² is candidate minus comparator, in percentage points.
@@ -90,7 +95,44 @@ levels; D043 before any NN was fit). NN3-dm beats ENet+H by 0.35 pp of R² [0.18
 GBRT+H-dm by 0.37 pp [0.25, 0.48]; on within-month errors (month means removed) both tests give
 p < 0.001. Their overall R² is 0.66% and 0.67%. The ranking GKX report appears here, once month levels are removed from the training target.
 
-## 3. What the result rests on (exploratory)
+## 3. Sealed holdout, 2017–2021 (Phase 5)
+
+Fixed and pushed to GitHub before any holdout data were read (D050, tag `phase5-prereg`; code
+`freeze-v2`, panel hash published as tag `phase5-panel`):
+
+- **One confirmatory test (H1):** NN3-dm (5-seed ensemble trained on the within-month demeaned
+  target) beats the constant, one-sided Diebold–Mariano, α = 0.05. It was picked *after* seeing
+  1987–2016, as the most powerful of five candidates, so its 1987–2016 t is inflated by selection.
+  Because NN3-dm adds back the same training-window mean as the constant, H1 tests within-month
+  cross-sectional fit, not whether machine learning beats linear models.
+- **Power, stated in advance:** ≈ 68% if the 1987–2016 effect persisted unchanged, ≈ 30% at half
+  strength; "not detected" was named the most likely outcome.
+- **Everything else** (the seven D045 tests, all R²) is reported and decides nothing.
+
+The window is every return month with GKX's published characteristics: 2017-01 to 2021-12. All 18
+models reproduced their frozen 2016 predictions bit for bit before any holdout number was computed.
+
+| Test (one-sided) | 1987–2016, t (p) | 2017–2021, t (p) |
+|:--|--:|--:|
+| **H1: NN3-dm vs constant** (confirmatory) | 4.57 (< 0.001)† | **1.50 (0.066), not rejected** |
+| Test 1: NN3 vs constant | 2.21 (0.013) | 0.60 (0.27) |
+| NN3-dm vs ENet+H, within-month errors | 4.04 (< 0.001) | 1.30 (0.096) |
+| ENet+H vs constant | 1.63 (0.052) | −0.47 (0.68) |
+
+†H1 was chosen after seeing this column. Full report, generated once by the frozen code:
+[`results/phase5_report.md`](results/phase5_report.md). Reading notes for it: its unlabeled "R2 %"
+column is 2017–2021; "p = 0" means p < 0.001; PLS chose zero components (the constant) in every
+holdout year, so its row equals the constant's and "NN3 vs PLS" repeats test 1; on validation the
+demeaned NNs often fell back to the constant (NN3-dm in 6, NN2-dm in 11, NN1-dm in 21 of 25
+fold-seeds); every holdout R² CI, the constant's included, contains zero.
+
+Not claimed from the holdout: that the edge disappeared (t = 1.50 lies between the ≈ 1.9 expected
+if the 1987–2016 effect had persisted and the ≈ 0.9 expected at half strength); that it is "marginal" (simulated size at 60 months is
+≈ 6%, not 5%); that machine learning beats a constant out of sample; anything from holdout R² levels
+next to 1987–2016 levels (the constant itself moved from 0.18% to 0.27%), or from the sign pattern
+across 18 correlated forecasts. The 2017–2021 months are now spent for confirmatory use.
+
+## 4. What the result rests on (exploratory)
 
 Listed in D049 before computing; deviations logged in its addendum. These come after the look and
 change nothing above. Details: [`results/exploratory/phase4_diagnostics.md`](results/exploratory/phase4_diagnostics.md).
@@ -108,17 +150,17 @@ change nothing above. Details: [`results/exploratory/phase4_diagnostics.md`](res
 
 ![Per-year difference](results/writeup/fig2_per_year.png)
 
-## 4. What is not claimed
+## 5. What is not claimed
 
 - That neural nets or trees beat linear models (§2).
-- That a single neural network beats a constant (§3).
+- That a single neural network beats a constant (§4).
 - Anything about large stocks: on the 1,000 largest, the constant (0.45%) beats NN3 (0.29%).
 - Tradability: the edge is in microcaps and all Sharpe ratios are gross of costs.
 - Replication on independent data (§1).
 - That the deflated Sharpe ratios of the NN models (≈ 1.0) mean much: they count 14 variants as
   independent and ignore variants abandoned during development.
 
-## 5. Departures and amendments
+## 6. Departures and amendments
 
 | Change | From | Decision | When |
 |:--|:--|:--|:--|
@@ -144,30 +186,37 @@ numbers: the pre-registration text gives "does not replicate", D047 "does not re
 only)"; D045 and D048 give
 "partially replicates" (D045 only via test 7). Read the effect sizes, not the label.
 
-## 6. Limitations
+## 7. Limitations
 
 - DM p-values assume short-range dependence (5 HAC lags, 12-month blocks); Figure 2 shows multi-year
   runs, so the stated uncertainty is likely too small. Monthly losses are fat-tailed: OLS-all is
   170 pp worse than ENet+H in R² yet its DM p is 0.045.
 - Small-stock R² is above GKX's for most models and about double for ENet+H, GLM+H and NN1–NN3; the
   cause (universe or return construction) is not established.
-- OLS-all is −170% here vs GKX's −3.5%, an unresolved specification gap (D033).
+- OLS-all is −170% here vs GKX's −3.5%, an unresolved specification gap (D033); its −0.6% on the
+  holdout (much longer training windows) does not resolve it.
+- The holdout DM test uses the frozen 5 HAC lags (D015's rule would give 3 at 60 months) and over-
+  rejects slightly in short samples; it was fixed this way in advance to match the power analysis.
 
-## 7. Next
+## 8. Next
 
-Phase 5 opens the sealed holdout once, after a decision entry (D050) fixes its tests, states their
-power (low for test 1) and the expected outcome given the post-2002 fade, and is pushed for an
-external timestamp. The independent-data rebuild is deferred.
+Phase 5 is closed (D054). 2017–2021 cannot support any further confirmatory claim; only months
+from 2022 on could, under a new pre-registration, and only with characteristics this project does
+not yet have (an extended datashare, or the deferred independent rebuild from Open Source Asset
+Pricing signals).
 
 ## Checking this without WRDS
 
-- `git diff freeze-v1 HEAD -- src scripts pyproject.toml uv.lock` is empty: the frozen code is
-  unchanged.
-- `results/trials.jsonl`: one `started` row per test model, each with `git_sha` `46c1584`,
-  `git_dirty` false and a prediction sha256.
+- `git diff freeze-v1 freeze-v2 -- src scripts` touches only the D051 whitelist, and
+  `git diff freeze-v2 result-v2 -- src scripts tests pyproject.toml uv.lock` is empty.
+- `results/trials.jsonl`: the 18 `-test` runs (1987–2016) at `46c1584` and the 18 `-holdout` runs at
+  `0541701`, all with `git_dirty` false and a prediction sha256; one `phase5_unseal` and one
+  `phase5_look` row; for every model the 2016 `fold_sha256` is identical across its `-test`,
+  `-check2016` and `-holdout` runs (the canary, checkable with grep).
 - `results/final_report.md` records the commit it was generated from. (Its test-table header cites
   "D045/D047"; the verdict line cites D048, which governs.)
-- Results commit `cb59143`; tag `result-v1` (`d2086a7`) adds the first post-result review.
+- 1987–2016: results commit `cb59143`, tag `result-v1`. Holdout: results commit `46e7466`, tag
+  `result-v2`. Check out `result-v2` (not `freeze-v2`) to see the full ledger.
 - Predictions and data are not distributed (CRSP is licensed through WRDS); their hashes are in
   `docs/backup_manifest.sha256`.
 
@@ -176,4 +225,4 @@ external timestamp. The independent-data rebuild is deferred.
 constant / `train_mean`: each training window's mean return, used as a forecast · "+H": Huber loss ·
 "-dm": trained on returns net of the month's cross-sectional mean · DM: Diebold–Mariano · CW:
 Clark–West (nested models) · Holm: step-down correction across the 7 confirmatory tests ·
-fold-seed: one refit year × one seed.
+fold-seed: one refit year × one seed · holdout: 2017–2021, sealed until the single look.

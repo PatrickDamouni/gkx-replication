@@ -830,3 +830,37 @@ characteristics and CRSP files all hold signal month 201612 (macro row complete)
 Notes: the iCloud backup holds row-level CRSP data — keep it private (Advanced Data Protection on)
 and confirm MSU's WRDS terms allow it; extend it to holdout files only then. For a server-side
 timestamp, a GitHub Release can be created on `freeze-v2` and `phase5-panel` (the author's choice).
+
+## D054 — Phase 5 outcome and close (2026-10-13; council 17)
+- **Result (the single look, `results/phase5_report.md`, generated once by `freeze-v2`):** H1,
+  NN3-dm vs the constant over 201701–202112 (60 months): t = 1.503, one-sided p = 0.0664, **not
+  rejected**. Pre-written reading, printed mechanically: "Not detected (Arm A, 60 months). With ≈ 30%
+  power at half the 1987–2016 effect, this is weak evidence of decay, not evidence of absence."
+  Test 1 (NN3 vs the constant): t = 0.60. The only holdout p < 0.05 is ENet+H vs OLS-3+H
+  (Clark–West, nested, t = 4.28), two models that both trail the constant; it decides nothing.
+- **Provenance:** code `freeze-v2` (0541701); holdout panel 355,078 rows, 8,602 permnos, sha256
+  `6bdbd52861efd5360abe81be633cd873e30506291d2cb1b8c6dec63fcb79a07c`, published as tag
+  `phase5-panel` before any fit; results commit 46e7466, tag `result-v2`. Remote tag objects:
+  `phase5-prereg` 46b27a06…, `freeze-v2` 2ca7ae4e…, `phase5-panel` 7ac2b3e2…, `result-v2` 6b56e8bb….
+  Ledger (lines 1121–1274, append-only): one `phase5_unseal`, eight `phase5_inputs` (all the
+  published hash), 18 `-holdout` runs at clean 0541701 with 6 folds each, one `phase5_look`. Canary:
+  each model's 2016 `fold_sha256` is identical across its `-test`, `-check2016` and `-holdout` runs.
+  No `freeze-v2.1`, no crash, no resume.
+- **D053 steps with no file in the repo:** the pre-unseal backup of `results/` and the step-2
+  `--check2016` console output (18/18) were not kept; the step-7 copies outside the repo hash to
+  ledger `697e9af8…`, report `5995c083…`, console log `10c178ff…`, run log `e2afdc04…`, lock
+  `b28ca488…` (sha256 prefixes), matching the committed files. Wall time 10:05–18:20 EDT 13 Oct;
+  peak RSS 14.2 GB (trees), 10.9–12.0 GB (NNs). From unseal to the look, this session read only log
+  lines and `fold_done` counts, never ledger rows.
+- **Not visible in the report:** PLS chose zero components (the constant) in every holdout fold, so
+  its row equals the constant's and "NN3 vs PLS" repeats test 1 (six distinct tests, not seven).
+  Constant fallback on validation, holdout fold-seeds 2017–2021: NN1 13/25, NN1-dm 21/25, NN2 6/25,
+  NN2-dm 11/25, NN3 1/25, NN3-dm 6/25. The report prints p < 5e-5 as "0" and labels the holdout R²
+  column only "R2 %". The window ends in 2021-12 because GKX's published characteristics end there.
+- **Closed:** 2017–2021 is spent. No variant of H1 is computed (no 3 HAC lags, no equal-weighted
+  months, no sub-period, size or crash splits); any later diagnostic would be exploratory and listed
+  in an entry before computing, with symmetric trims. A future confirmatory test may use only months
+  from 2022 on, under a new pre-registration. The sealed CRSP rows for 2022–2024 were read by the
+  builder but enter no panel or metric; the OSAP holdout file was never opened.
+- **Backup:** holdout files are added to the manifest and the iCloud copy only after the WRDS-terms
+  question in D053 is settled.
