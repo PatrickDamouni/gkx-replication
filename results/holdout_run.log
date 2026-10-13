@@ -1,0 +1,180 @@
+2026-10-13 10:05:33 start holdout phase5-panel 0541701
+2026-10-13 10:05:33 family linear
+10:05:43 done OLS-3-holdout (4s)
+10:05:46 done OLS-3+H-holdout (3s)
+10:06:19 done OLS-holdout (33s)
+10:07:18 done OLS+H-holdout (59s)
+10:07:55 done PCR-holdout (37s)
+10:08:33 done PLS-holdout (38s)
+10:10:19 done ENet+H-holdout (106s)
+10:18:03 done GLM+H-holdout (464s)
+      750.84 real       659.16 user        82.19 sys
+         12241829888  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+            38555554  page reclaims
+                7718  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  16  messages sent
+                  32  messages received
+                   1  signals received
+                4553  voluntary context switches
+              773595  involuntary context switches
+           251994915  instructions retired
+           132827465  cycles elapsed
+            12583416  peak memory footprint
+2026-10-13 10:18:03 family trees
+10:28:54 done GBRT+H-holdout (647s)
+10:40:01 done GBRT+H-dm-holdout (667s)
+11:20:11 done RF-holdout (2411s)
+12:03:52 done RF-dm-holdout (2621s)
+     6348.56 real     36841.18 user       714.70 sys
+         14196948992  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+            31778399  page reclaims
+                3702  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  16  messages sent
+                  32  messages received
+                   1  signals received
+                3775  voluntary context switches
+           122681170  involuntary context switches
+           204595600  instructions retired
+            95424961  cycles elapsed
+            12665360  peak memory footprint
+2026-10-13 12:03:52 nn NN1
+12:55:16 done NN1-holdout (3081s)
+     3084.52 real      7470.32 user       487.69 sys
+         11865161728  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6402372  page reclaims
+                3827  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  16  messages sent
+                  32  messages received
+                   1  signals received
+                5312  voluntary context switches
+            94093449  involuntary context switches
+           140427682  instructions retired
+            57055269  cycles elapsed
+            12714488  peak memory footprint
+2026-10-13 12:55:17 nn NN1-dm
+13:46:38 done NN1-dm-holdout (3077s)
+     3081.66 real      7389.01 user       482.62 sys
+         11084529664  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6559822  page reclaims
+                 406  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  16  messages sent
+                  32  messages received
+                   1  signals received
+                3659  voluntary context switches
+            93782900  involuntary context switches
+           137156259  instructions retired
+            54889226  cycles elapsed
+            12681768  peak memory footprint
+2026-10-13 13:46:38 nn NN2
+14:41:18 done NN2-holdout (3276s)
+     3280.30 real      7590.65 user       584.76 sys
+         12021301248  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6666663  page reclaims
+                 393  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  16  messages sent
+                  32  messages received
+                   1  signals received
+                5239  voluntary context switches
+           133186718  involuntary context switches
+           144048156  instructions retired
+            61957711  cycles elapsed
+            12681744  peak memory footprint
+2026-10-13 14:41:19 nn NN2-dm
+16:17:51 done NN2-dm-holdout (5789s)
+     5792.97 real      7990.86 user       618.86 sys
+         11860590592  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             8120285  page reclaims
+                 415  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  16  messages sent
+                  32  messages received
+                   1  signals received
+                3756  voluntary context switches
+           142377572  involuntary context switches
+           137085620  instructions retired
+            53031357  cycles elapsed
+            12665384  peak memory footprint
+2026-10-13 16:17:51 nn NN3
+17:19:33 done NN3-holdout (3698s)
+     3702.33 real      8019.26 user       758.33 sys
+         10871767040  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6494305  page reclaims
+                 440  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  16  messages sent
+                  32  messages received
+                   1  signals received
+                5725  voluntary context switches
+           185278029  involuntary context switches
+           149554201  instructions retired
+            66402248  cycles elapsed
+            12698128  peak memory footprint
+2026-10-13 17:19:34 nn NN3-dm
+18:20:40 done NN3-dm-holdout (3663s)
+     3666.81 real      7985.22 user       748.52 sys
+         11607736320  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+             6534142  page reclaims
+                 418  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                  16  messages sent
+                  32  messages received
+                   1  signals received
+                5442  voluntary context switches
+           184399600  involuntary context switches
+           144347730  instructions retired
+            58749964  cycles elapsed
+            12632568  peak memory footprint
+         12241829888  maximum resident set size
+         14196948992  maximum resident set size
+         11865161728  maximum resident set size
+         11084529664  maximum resident set size
+         12021301248  maximum resident set size
+         11860590592  maximum resident set size
+         10871767040  maximum resident set size
+         11607736320  maximum resident set size
+2026-10-13 18:20:41 all holdout predictions written; next: uv run --locked python scripts/phase5_report.py --holdout
