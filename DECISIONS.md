@@ -899,3 +899,16 @@ timestamp, a GitHub Release can be created on `freeze-v2` and `phase5-panel` (th
   The SWH and Wayback captures were taken about 49 minutes after the look: they preserve the
   server's push times, not any pre-look state. The `phase5-prereg` release note and WRITEUP §3 were
   corrected to match. The run is reproducible from `freeze-v2` by anyone with WRDS access.
+- **Erratum to the bullet above (council 20, facts only):** (1) the panel hash was produced by the
+  unseal (ledger 22:01:36Z) and tagged `phase5-panel` at 22:01:42Z, so it was not fixed before the
+  unseal; what was fixed before is the code and the sha256 of every sealed input. (2) Before the
+  unseal, 2017+ data were touched by the ingest splits of OSAP (D009, 2026-10-07), macro (D021,
+  2026-10-08) and datashare (D023, 2026-10-08) and by the D052 pull, not only by D023 and D052;
+  the residual-risk window starts 2026-10-07. (3) Only the Wayback capture of the activity API holds
+  the server's push times; the Software Heritage snapshot holds refs and git objects (client-set
+  dates) as of 23:30:14Z. (4) The 15:03:37Z push was commit 0541701; the `freeze-v2` tag's tagger
+  date is 16:15:00Z, and tag pushes are not logged. (5) Reproduction needs byte-identical sealed
+  inputs: WRDS plus the original datashare and Welch–Goyal downloads, whose source files were
+  deleted after ingest. (6) The `phase5-prereg` release became immutable at its last edit
+  (23:48:15Z), so its note keeps the shorter ingest list of point 2 and cannot be corrected; the
+  other two releases remain editable. WRITEUP §3 is corrected to match.
