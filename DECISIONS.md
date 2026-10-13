@@ -877,3 +877,12 @@ timestamp, a GitHub Release can be created on `freeze-v2` and `phase5-panel` (th
   2017+ rows (D023); what is claimed is that no 2017+ row entered a model or metric before the
   look. The release notes were corrected the same evening. For any future test: register with a
   third party at the time, and push locks as branch commits, not only as tags.
+- **Third-party copies and repo settings (2026-10-13, after council 18, author-approved):**
+  Software Heritage snapshot `swh:1:snp:9eedf0e4fef7f790e071ebc1351706a1b1efebec` (save request
+  2556045, 23:30Z). Wayback Machine: the GitHub activity feed with the push times
+  (web.archive.org/web/20261013233025/https://api.github.com/repos/PatrickDamouni/gkx-replication/activity?per_page=100,
+  17 events incl. 1220892 at 2026-10-12T14:16:23Z and 0541701 at 15:03:37Z), the activity page and
+  the releases page. GitHub rulesets: tags cannot be moved or deleted, `master` cannot be
+  force-pushed or deleted; release immutability on for new releases (the three existing releases
+  stay editable, their tags do not); secret scanning and push protection on; wiki off. Commits from
+  here on use the GitHub noreply email; earlier history is unchanged.
