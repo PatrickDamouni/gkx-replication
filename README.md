@@ -1,45 +1,58 @@
-# GKX replication
+# Machine learning vs a constant: re-testing Gu, Kelly & Xiu (2020)
 
-**Result.** A pre-registered reproduction of Gu, Kelly & Xiu (2020) on their own characteristics,
-tested in two windows, each looked at once:
-- **1987–2016:** GKX's model ranking did not reproduce; a 5-seed NN3 ensemble beat a constant
-  forecast (ΔR² +0.27 pp, p = 0.013, not Holm-significant), with the edge in microcaps and before 2003.
-- **2017–2021 (sealed holdout, 60 months):** the one test fixed and published before unsealing
-  did not detect an edge (t = 1.50, p = 0.066; power ≈ 30% if the effect had halved).
+[![tests](https://github.com/PatrickDamouni/gkx-replication/actions/workflows/tests.yml/badge.svg)](https://github.com/PatrickDamouni/gkx-replication/actions/workflows/tests.yml)
+[![license: MIT](https://img.shields.io/badge/code%20license-MIT-blue.svg)](LICENSE)
 
-- Question, success criteria and locked splits: [`PREREGISTRATION.md`](PREREGISTRATION.md)
-- Every design choice and why: [`DECISIONS.md`](DECISIONS.md)
-- **Both results, written up: [`WRITEUP.md`](WRITEUP.md)**
+**Question.** Gu, Kelly & Xiu (2020, *Review of Financial Studies*) found that neural networks and
+trees forecast next-month US stock returns better than linear models. Does that hold when every
+test is fixed in advance and each window of data is looked at only once — including five years,
+2017–2021, kept sealed until the end?
 
-## Phases
+**Answer.**
+- **1987–2016** (GKX's window, their own 94 stock characteristics): their ranking of models did
+  **not** reproduce. Their headline network (NN3, averaged over 5 random seeds) did beat the
+  simplest honest benchmark, each training period's average return: out-of-sample R² 0.45% vs
+  0.18% (one-sided p = 0.013, not significant after correcting for the 7 pre-specified tests). The
+  edge needed the 5-seed average, sat in the smallest stocks, and was concentrated before 2003.
+- **2017–2021** (sealed, opened once): the single test fixed and published before unsealing did
+  **not detect** an edge (t = 1.50, p = 0.066). With 60 months it had only about 30% power if the
+  effect had halved, so this is weak evidence of decay, not proof that the edge is gone.
 
-| Phase | Status |
-|---|---|
-| 0. Setup + pre-registration | done (`prereg-v1`) |
-| 1. Data pipeline + leakage checks | done: CRSP + GKX datashare panel, 2017+ holdout sealed until Phase 5, OSAP map (D001–D026) |
-| 2. Baselines | done: OLS-3, OLS-all (+Huber), training-mean benchmark |
-| 3. Replication (linear, trees, NNs; walk-forward, multi-seed) | done: single 1987–2016 run from `freeze-v1` (2026-10-11); pre-specified verdict under D048 **partially replicates** — 5-seed NN3 ensemble R² 0.454% [0.165, 0.733] beats a training-mean forecast (p = 0.013, does not survive Holm); GKX's model ranking not reproduced. [`results/final_report.md`](results/final_report.md). Primary data is GKX's own characteristics (D022), not an independent build |
-| 4. Ablations + error analysis (pre-2017 only) | done: exploratory zero-refit diagnostics only (D049); write-up |
-| 5. Unseal post-publication holdout, final test, write-up | done: single look from `freeze-v2`, 2017-01..2021-12 (60 months); H1 t = 1.503, p = 0.066, not rejected (D050–D054); [`results/phase5_report.md`](results/phase5_report.md), tag `result-v2` |
+**Why 0.45% is normal, not broken.** Monthly returns of individual stocks are mostly unpredictable
+news; GKX's own headline network scores 0.40%. A value far above 1% would point to look-ahead
+leakage. Small R² across thousands of stocks still adds up: in 1987–2016 a portfolio long the top
+and short the bottom decile of NN3's forecasts had an annualized Sharpe ratio of 1.43 (95% CI
+1.06–1.82), before trading costs.
+
+![The same four tests in 1987–2016 and in the sealed 2017–2021 window](docs/figures/holdout_tests.png)
+
+**Check it without licensed data:**
+```bash
+git show prereg-v1:PREREGISTRATION.md                    # the plan, tagged before the first results
+git diff freeze-v2 result-v2 -- src scripts tests        # empty: the frozen code ran unchanged
+grep -c '"name": "[^"]*-holdout"' results/trials.jsonl   # 18: one run per model, all at commit 0541701
+```
+The test badge runs the 191 tests that need no licensed data on every push.
+
+**Read next:** [`WRITEUP.md`](WRITEUP.md) (10 minutes, both results and what is *not* claimed) ·
+[`PREREGISTRATION.md`](PREREGISTRATION.md) · [`DECISIONS.md`](DECISIONS.md) (full audit trail) ·
+[`docs/phases.md`](docs/phases.md).
+
+Built with substantial AI assistance (Claude); [`WRITEUP.md`](WRITEUP.md) says what that covered.
+Code is MIT-licensed. The data — CRSP via WRDS and GKX's published characteristics — are licensed
+separately and are not in this repository.
 
 ## Running
 
 ```bash
-uv run pytest -q -W error                       # main suite
-GKX_TORCH=1 uv run pytest -q tests/nn           # NN tests (torch and LightGBM never share a process)
-nohup bash scripts/run_test.sh --rehearsal >/dev/null 2>&1 &   # dry run on 1975-1986
-uv run python scripts/final_report.py --rehearsal
+uv sync --frozen
+uv run pytest -q -W error \
+  --deselect tests/test_feature_map.py::test_every_gkx_characteristic_appears_exactly_once \
+  --deselect tests/test_feature_map.py::test_osap_signals_are_published_predictors
+GKX_TORCH=1 uv run pytest -q tests/nn    # torch and LightGBM never share a process
 ```
 
-The 1987–2016 test window is looked at once, from the `freeze-v1` tag
-([`docs/freeze_checklist.md`](docs/freeze_checklist.md)); the verdict is printed mechanically by
-`scripts/final_report.py` under D045 as amended by D047–D048.
-
-## Setup
-
-```bash
-uv sync
-cp .env.example .env   # add your WRDS username
-```
-
-Data comes from WRDS (CRSP) under an academic license and is never committed.
+The two deselected tests read licensed files. Reproducing the models needs WRDS access plus the
+original GKX and Welch–Goyal downloads (`cp .env.example .env` and add a WRDS username); the
+single-look runbooks are [`docs/freeze_checklist.md`](docs/freeze_checklist.md) (1987–2016) and
+D053 in [`DECISIONS.md`](DECISIONS.md) (2017–2021).

@@ -1,7 +1,7 @@
 # Decision log
 
 One entry per decision: what I chose, what I rejected, why. Newest at the bottom.
-This file is the interview script.
+Full audit trail; start with README.md and WRITEUP.md.
 
 ---
 
@@ -915,3 +915,12 @@ timestamp, a GitHub Release can be created on `freeze-v2` and `phase5-panel` (th
 - **Erratum to point (3) above (council 21):** the Wayback capture of the activity *page*
   (web.archive.org/web/20261013233008/…/activity) also holds the server's push times
   (`pushedAt`, e.g. 2026-10-12T14:16:23Z and 15:03:37Z), not only the activity-API capture.
+
+## D055 — Presentation pass after the freeze (2026-10-14; docs and CI only)
+Changes nothing in `src/`, `scripts/`, `tests/`, `results/` or any tag (`git diff result-v2 --
+src scripts tests results` is empty). README rewritten for a first-time reader (plain question and
+answer, a figure of the four holdout tests' t-statistics parsed from `results/phase5_report.md`);
+phase table moved to `docs/phases.md`; MIT license for the code; a GitHub Actions workflow runs the
+191 tests that need no licensed data (two tests in `tests/test_feature_map.py` read licensed files
+and cannot be edited, being freeze-v1 tests); line 4 of this file reworded (it read "This file is
+the interview script."); council records 20–22, cited in D054, committed.
