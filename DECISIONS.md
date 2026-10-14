@@ -912,3 +912,6 @@ timestamp, a GitHub Release can be created on `freeze-v2` and `phase5-panel` (th
   deleted after ingest. (6) The `phase5-prereg` release became immutable at its last edit
   (23:48:15Z), so its note keeps the shorter ingest list of point 2 and cannot be corrected; the
   other two releases remain editable. WRITEUP §3 is corrected to match.
+- **Erratum to point (3) above (council 21):** the Wayback capture of the activity *page*
+  (web.archive.org/web/20261013233008/…/activity) also holds the server's push times
+  (`pushedAt`, e.g. 2026-10-12T14:16:23Z and 15:03:37Z), not only the activity-API capture.
